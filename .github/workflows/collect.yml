@@ -31,8 +31,8 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
       - name: Kaydet
         run: |
-          git config user.name "oran-sinyal-bot"
-          git config user.email "actions@users.noreply.github.com"
+          git config user.name "kod34x-png"
+          git config user.email "kod34x@gmail.com"   # Vercel Hobby yalnız hesap sahibinin commitlerini yayınlar
           git add state web/data
           if git diff --cached --quiet; then echo "değişiklik yok"; exit 0; fi
           git commit -q -m "veri: $(date -u +%Y-%m-%dT%H:%MZ)"
