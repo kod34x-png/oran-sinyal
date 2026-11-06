@@ -11,7 +11,8 @@ C.STATE_DIR = tmp / "state"
 C.WEB_DATA = tmp / "data"
 C.PINNWIRE_KEY = "x"
 
-import util, sources, main, markets
+import util, sources, main, markets, enrich
+C.ODDSPAPI_KEY = "y"; C.FOOTBALL_DATA_KEY = ""
 
 T0 = 1_800_000_000
 clock = {"t": T0}
@@ -55,6 +56,19 @@ def fake_pin(odds):
 
 
 sources.team_news = lambda team, lang="tr": []
+PM = {"i": 0}
+def fake_pm(series_id):
+    if series_id != "10292": return []
+    i = PM["i"]
+    return [{"home": "Fenerbahçe SK", "away": "Rams Başakşehir FK", "kickoff": KO, "prices": {"1": 0.55 - .05*i, "X": .25, "2": .20 + .05*i},
+             "volumes": {"1": 50000, "X": 10000, "2": 20000 + 15000*i}, "total_volume": 80000 + 15000*i}]
+sources.polymarket_matches = fake_pm
+sources.oddspapi_fixtures = lambda tid: [{"fid": "F1", "home": "Fenerbahce", "away": "Basaksehir", "kickoff": KO}]
+OPCALLS = {"n": 0}
+def fake_hist(fid):
+    OPCALLS["n"] += 1
+    return {"pinnacle": {"2": [[T0-86400*10, 6.0], [T0, 4.1]]}, "singbet": {"2": [[T0-86400*9, 5.8], [T0, 4.0]]}}
+sources.oddspapi_history = fake_hist
 sources.espn_results = lambda code, a, b: [{"home": "Fenerbahçe", "away": "Başakşehir",
                                       "kickoff": KO, "ft": (0, 2), "ht": (0, 1), "done": True}]
 
@@ -68,15 +82,21 @@ runs = [
 ]
 for i, (io, po) in enumerate(runs):
     clock["t"] = T0 + i * 10 * 3600
+    PM["i"] = i
     sources.iddaa_events = fake_iddaa(io)
     sources.pinnacle_events = fake_pin(po)
     assert main.main() == 0
+clock["t"] = KO - 6 * 3600          # 6 saat kala: OddsPapi devreye girer
+assert main.main() == 0
 
 sig = json.loads((C.WEB_DATA / "signals.json").read_text())
 print(json.dumps(sig["matches"][0]["signals"], ensure_ascii=False, indent=1)[:1500])
 ms = {s["market"]: s for s in sig["matches"][0]["signals"]}
 assert ms["MS"]["pick"] == "2" and ms["MS"]["level"] == "cok_guclu", ms["MS"]
 assert ms["KG"]["pick"] == "Var"
+assert ms["MS"]["pm"]["confirm"] is True, ms["MS"]["pm"]
+assert ms["MS"]["asia"]["confirm"] is True and OPCALLS["n"] == 1, (ms["MS"].get("asia"), OPCALLS)
+q = json.loads((C.STATE_DIR / "quota.json").read_text()); assert q["used"] == 2, q
 
 # maç sonrası
 clock["t"] = KO + 4 * 3600
@@ -88,5 +108,7 @@ k = json.loads((C.WEB_DATA / "karne.json").read_text())
 print(json.dumps(k["entries"], ensure_ascii=False, indent=1))
 res = {e["market"]: e["result"] for e in k["entries"]}
 assert res["MS"] == "tuttu" and res["KG"] == "tutmadı", res
+e = [x for x in k["entries"] if x["market"] == "MS"][0]
+assert e["pm"] is True and e["asia"] is True and e["clv"] is not None and e["clv"] > 0, e
 print("TÜM TESTLER GEÇTİ")
 shutil.rmtree(tmp)

@@ -8,6 +8,7 @@ import time
 import config as C
 import sources
 import signals
+import enrich
 from markets import settle
 from util import now_ts, iso, load_json, save_json, match_pair
 
@@ -15,6 +16,7 @@ HIST = C.STATE_DIR / "history.json"
 PENDING = C.STATE_DIR / "pending.json"
 CATALOG = C.STATE_DIR / "market_catalog.json"
 NEWS = C.STATE_DIR / "news_cache.json"
+OPFIX = C.STATE_DIR / "op_fixtures.json"
 KARNE = C.WEB_DATA / "karne.json"
 SIGNALS = C.WEB_DATA / "signals.json"
 
@@ -50,6 +52,7 @@ def main():
     news_cache = load_json(NEWS, {})
     karne = load_json(KARNE, {"entries": []})
     status = {"iddaa": "ok", "pinnacle": "anahtar yok" if not C.PINNWIRE_KEY else "ok",
+              "polymarket": "ok", "asya": "anahtar yok" if not C.ODDSPAPI_KEY else "ok",
               "news": "ok", "results": "ok"}
 
     # 1) iddaa
@@ -94,14 +97,42 @@ def main():
             for k, odd in p["odds"].items():
                 append_point(m["src"]["pin"], k, ts, odd)
 
+    # 3b) Polymarket hacmi
+    pm_n, pm_err = 0, []
+    for lg in C.LEAGUES:
+        if not lg.get("pm"):
+            continue
+        try:
+            pms = sources.polymarket_matches(lg["pm"])
+        except Exception as e:
+            pm_err.append(f"{lg['key']}: {str(e)[:60]}")
+            continue
+        cands = [(x, x["home"], x["away"], x["kickoff"]) for x in pms]
+        for m in hist["matches"].values():
+            if m.get("league") != lg["key"] or m.get("locked") or m["kickoff"] <= ts:
+                continue
+            x = match_pair(m["home"], m["away"], m["kickoff"], cands, window_h=3)
+            if x:
+                enrich.pm_append(m, x, ts)
+                pm_n += 1
+    if pm_err:
+        status["polymarket"] = "hata: " + "; ".join(pm_err)[:160]
+    print(f"[polymarket] {pm_n} maç eşleşti", pm_err or "")
+
     # 4) sinyaller (yaklaşan maçlar) + kilitleme
-    upcoming = []
+    upcoming, live_sigs = [], []
     for mid, m in list(hist["matches"].items()):
         lock_ts = m["kickoff"] - 5 * 60
         if ts >= lock_ts:
             if not m.get("locked"):
                 news = (m.get("news_at_lock") or [])
                 sigs = signals.compute(m, lock_ts, until_ts=lock_ts, news_hits=news)
+                for s_ in sigs:
+                    key = f"{s_['market']}|{s_['pick']}"
+                    s_["pm"] = enrich.pm_info(m, key, lock_ts)
+                    s_["asia"] = enrich.asia_info(m, key)
+                    s_["clv"] = enrich.clv(m, s_)
+                    s_.pop("spark", None)
                 pending.append({"id": mid, "league": m.get("league", "TR1"), "home": m["home"], "away": m["away"],
                                 "kickoff": m["kickoff"], "signals": sigs, "tries": 0})
                 m["locked"] = True
@@ -113,13 +144,68 @@ def main():
             news = get_news(news_cache, m["home"], lang, status) + get_news(news_cache, m["away"], lang, status)
             m["news_at_lock"] = news
         sigs = signals.compute(m, ts, news_hits=news)
+        enrich.remember_first(m, sigs, ts)
+        live_sigs.append((mid, m, sigs))
+
+    # 4b) OddsPapi: güçlü+ maç sonucu sinyallerinde Asya keskin şirketleri + gerçek açılış
+    if C.ODDSPAPI_KEY:
+        q = enrich.quota_load()
+        opfix = load_json(OPFIX, {})
+        cands = []
+        for mid, m, sigs in live_sigs:
+            if (m.get("op") or {}).get("hist") is not None:
+                continue
+            if (m["kickoff"] - ts) / 3600 > C.ODDSPAPI_HIST_WINDOW_H:
+                continue
+            strong = [s_ for s_ in sigs if s_["market"] == "MS" and s_["level"] in ("guclu", "cok_guclu")]
+            if strong:
+                cands.append((max(s_["iddaa"]["drop"] for s_ in strong), m))
+        cands.sort(key=lambda x: -x[0])
+        fetched = 0
+        for _, m in cands:
+            lg = LEAGUE.get(m.get("league"))
+            if not lg or not lg.get("op") or not enrich.quota_ok(q, hist=True):
+                continue
+            ent = opfix.get(m["league"])
+            if not ent or ts - ent["ts"] > C.ODDSPAPI_FIXTURE_REFRESH_H * 3600:
+                if not enrich.quota_ok(q):
+                    break
+                try:
+                    enrich.quota_use(q)
+                    opfix[m["league"]] = ent = {"ts": ts, "list": sources.oddspapi_fixtures(lg["op"])}
+                except Exception as e:
+                    status["asya"] = f"hata: {str(e)[:120]}"
+                    continue
+            fc = [(f, f["home"], f["away"], f["kickoff"]) for f in ent["list"]]
+            f = match_pair(m["home"], m["away"], m["kickoff"], fc, window_h=3)
+            if not f:
+                m["op"] = {"fid": None, "fetched": ts, "hist": {}}
+                continue
+            try:
+                enrich.quota_use(q, hist=True)
+                m["op"] = {"fid": f["fid"], "fetched": ts, "hist": sources.oddspapi_history(f["fid"])}
+                fetched += 1
+            except Exception as e:
+                status["asya"] = f"hata: {str(e)[:120]}"
+        enrich.quota_save(q)
+        save_json(OPFIX, opfix)
+        print(f"[oddspapi] {fetched} maç geçmişi alındı; ay: {q['used']}/{C.ODDSPAPI_MONTHLY_CAP}, bugün: {q['hist_today']}/{C.ODDSPAPI_DAILY_HIST}")
+        status["asya_kota"] = f"{q['used']}/{C.ODDSPAPI_MONTHLY_CAP}"
+
+    for mid, m, sigs in live_sigs:
+        for s_ in sigs:
+            key = f"{s_['market']}|{s_['pick']}"
+            s_["pm"] = enrich.pm_info(m, key, ts)
+            s_["asia"] = enrich.asia_info(m, key)
+            s_.pop("raw_level", None)
         lk = m.get("league", "TR1")
         upcoming.append({"id": mid, "league": lk, "league_name": LEAGUE.get(lk, {}).get("name", lk),
                          "home": m["home"], "away": m["away"],
                          "kickoff": m["kickoff"], "kickoff_iso": iso(m["kickoff"]),
                          "tracking_since": iso(m["first_seen"]),
                          "pinnacle": bool(m.get("pin_id")),
-                         "signals": [{k: v for k, v in s.items() if k != "raw_level"} for s in sigs]})
+                         "pm_volume": round(m.get("pm_total") or 0),
+                         "signals": sigs})
 
     # 5) sonuçlar -> karne (lig lig)
     due = [p for p in pending if ts > p["kickoff"] + int(2.5 * 3600)]
@@ -128,11 +214,17 @@ def main():
         group = [p for p in due if p.get("league", "TR1") == lk]
         d0 = datetime.fromtimestamp(min(p["kickoff"] for p in group), tz=timezone.utc) - timedelta(days=1)
         d1 = datetime.fromtimestamp(max(p["kickoff"] for p in group), tz=timezone.utc) + timedelta(days=1)
+        res = []
         try:
-            res = sources.espn_results(LEAGUE[lk]["espn"], d0.strftime("%Y%m%d"), d1.strftime("%Y%m%d"))
+            res += sources.espn_results(LEAGUE[lk]["espn"], d0.strftime("%Y%m%d"), d1.strftime("%Y%m%d"))
         except Exception as e:
-            failed.append(f"{lk}: {str(e)[:80]}")
-            continue
+            failed.append(f"{lk} ESPN: {str(e)[:60]}")
+        if C.FOOTBALL_DATA_KEY and LEAGUE[lk].get("fd"):
+            try:
+                res += sources.football_data_results(LEAGUE[lk]["fd"], d0.strftime("%Y-%m-%d"), d1.strftime("%Y-%m-%d"))
+            except Exception as e:
+                failed.append(f"{lk} FD: {str(e)[:60]}")
+        res = [r for r in res if r["done"] and r["ft"]]
         cands = [(r, r["home"], r["away"], r["kickoff"]) for r in res]
         for p in group:
             r = match_pair(p["home"], p["away"], p["kickoff"], cands, window_h=30)
@@ -148,6 +240,8 @@ def main():
                     "level": s_["level"], "raw_level": s_.get("raw_level", s_["level"]),
                     "odd": s_["iddaa"]["cur"], "pin_odd": (s_["pin"] or {}).get("cur"),
                     "news": bool(s_.get("news")), "late": s_.get("late", False),
+                    "pm": (s_.get("pm") or {}).get("confirm"), "asia": (s_.get("asia") or {}).get("confirm"),
+                    "clv": (s_.get("clv") or {}).get("clv"), "clv_src": (s_.get("clv") or {}).get("src"),
                     "result": "iade" if ok is None else ("tuttu" if ok else "tutmadı"),
                 })
             settled_ids.add(p["id"])

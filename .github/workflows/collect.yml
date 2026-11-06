@@ -25,6 +25,8 @@ jobs:
         id: run
         env:
           PINNWIRE_KEY: ${{ secrets.PINNWIRE_KEY }}
+          ODDSPAPI_KEY: ${{ secrets.ODDSPAPI_KEY }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
         run: |
           set +e
           python collector/main.py

@@ -10,13 +10,13 @@ WEB_DATA = ROOT / "web" / "data"
 IDDAA_BASE = "https://sportsbookv2.iddaa.com/sportsbook"
 # Ligler: iddaa adı (ci çalışırken bulunur, yedek ci), Pinnacle adı, ESPN kodu, haber dili
 LEAGUES = [
-    {"key": "TR1", "name": "Süper Lig",      "iddaa": "Türkiye Süper Lig",     "ci": 584,  "pin": "Turkey - Super League",   "espn": "tur.1", "lang": "tr"},
-    {"key": "TR2", "name": "1. Lig",         "iddaa": "Türkiye 1. Lig",        "ci": 1980, "pin": "Turkey - 1st League",     "espn": "tur.2", "lang": "tr"},
-    {"key": "ENG", "name": "Premier Lig",    "iddaa": "İngiltere Premier Lig", "ci": 43,   "pin": "England - Premier League", "espn": "eng.1", "lang": "en"},
-    {"key": "ESP", "name": "La Liga",        "iddaa": "İspanya La Liga",       "ci": 129,  "pin": "Spain - La Liga",         "espn": "esp.1", "lang": "en"},
-    {"key": "ITA", "name": "Serie A",        "iddaa": "İtalya Serie A",        "ci": None, "pin": "Italy - Serie A",         "espn": "ita.1", "lang": "en"},
-    {"key": "GER", "name": "Bundesliga",     "iddaa": "Almanya Bundesliga",    "ci": 45,   "pin": "Germany - Bundesliga",    "espn": "ger.1", "lang": "en"},
-    {"key": "FRA", "name": "Ligue 1",        "iddaa": "Fransa Ligue 1",        "ci": 381,  "pin": "France - Ligue 1",        "espn": "fra.1", "lang": "en"},
+    {"key": "TR1", "name": "Süper Lig", "op": 52, "pm": "10292", "fd": None,      "iddaa": "Türkiye Süper Lig",     "ci": 584,  "pin": "Turkey - Super League",   "espn": "tur.1", "lang": "tr"},
+    {"key": "TR2", "name": "1. Lig", "op": 98, "pm": None, "fd": None,         "iddaa": "Türkiye 1. Lig",        "ci": 1980, "pin": "Turkey - 1st League",     "espn": "tur.2", "lang": "tr"},
+    {"key": "ENG", "name": "Premier Lig", "op": 17, "pm": "10188", "fd": "PL",    "iddaa": "İngiltere Premier Lig", "ci": 43,   "pin": "England - Premier League", "espn": "eng.1", "lang": "en"},
+    {"key": "ESP", "name": "La Liga", "op": 8, "pm": "10193", "fd": "PD",        "iddaa": "İspanya La Liga",       "ci": 129,  "pin": "Spain - La Liga",         "espn": "esp.1", "lang": "en"},
+    {"key": "ITA", "name": "Serie A", "op": 23, "pm": "10203", "fd": "SA",        "iddaa": "İtalya Serie A",        "ci": None, "pin": "Italy - Serie A",         "espn": "ita.1", "lang": "en"},
+    {"key": "GER", "name": "Bundesliga", "op": 35, "pm": "10194", "fd": "BL1",     "iddaa": "Almanya Bundesliga",    "ci": 45,   "pin": "Germany - Bundesliga",    "espn": "ger.1", "lang": "en"},
+    {"key": "FRA", "name": "Ligue 1", "op": 34, "pm": "10195", "fd": "FL1",        "iddaa": "Fransa Ligue 1",        "ci": 381,  "pin": "France - Ligue 1",        "espn": "fra.1", "lang": "en"},
 ]
 
 # Pinnacle (PinnWire). Anahtar yoksa bu kaynak atlanır.
@@ -61,3 +61,21 @@ THRESHOLDS_IDDAA_ONLY = {      # sadece iddaa varken
 LATE_MOVE_HOURS = 12           # düşüşün çoğu son 12 saatteyse "geç hareket"
 LEVELS = ["zayif", "guclu", "cok_guclu"]
 LEVEL_LABEL = {"cok_guclu": "Çok güçlü", "guclu": "Güçlü", "zayif": "Zayıf"}
+
+# --- Ek kaynaklar ---
+ODDSPAPI_KEY = os.environ.get("ODDSPAPI_KEY", "").strip()
+ODDSPAPI_BASE = "https://api.oddspapi.io/v4"
+ODDSPAPI_MONTHLY_CAP = 230        # ücretsiz plan 250; 20 pay
+ODDSPAPI_DAILY_HIST = 6           # günde en fazla bu kadar maç geçmişi
+ODDSPAPI_HIST_WINDOW_H = 8        # maça bu kadar saat kala güçlü+ sinyaller için sorgu
+ODDSPAPI_FIXTURE_REFRESH_H = 72
+ASIA_BOOKS = ("singbet", "sbobet")
+ASIA_CONFIRM_DROP = 0.05          # Asya keskin şirketlerde en az %5 aynı yönde düşüş
+
+POLYMARKET_BASE = "https://gamma-api.polymarket.com"
+PM_CONFIRM_PRICE = 0.03           # olasılık en az 3 puan artmış
+PM_CONFIRM_SHARE = 0.5            # son 24 saatteki yeni hacmin en az yarısı bu tarafa
+PM_MIN_NEW_VOLUME = 5000          # ve en az 5.000 $ yeni hacim
+
+FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "").strip()
+FOOTBALL_DATA_BASE = "https://api.football-data.org/v4"

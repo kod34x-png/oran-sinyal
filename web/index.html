@@ -47,6 +47,9 @@ main{max-width:740px;margin:0 auto;padding:14px 12px}
 .tag{background:#f1f5f9;border-radius:7px;padding:3px 8px;font-weight:600}
 .tag.news{background:#fee2e2;color:#b91c1c}
 .tag.late{background:#ede9fe;color:#6d28d9}
+.tag.ok{background:#d1fae5;color:#047857}
+.tag.no{background:#f1f5f9;color:#64748b}
+.vol{font-size:13.5px;color:var(--soft);font-weight:700;margin-left:8px}
 details{grid-column:1/-1;font-size:14.5px;color:var(--mut)}
 summary{font-weight:700;color:#b91c1c}
 details a{color:var(--brand)}
@@ -103,6 +106,7 @@ const lgName = k => (LEAGUES.find(l=>l.key===k)||{name:k}).name;
 
 const fmtKO = iso => new Date(iso).toLocaleString("tr-TR",{timeZone:TZ,weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
 const pct = x => (x*100).toFixed(0)+"%";
+const fmtK = n => n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"K":String(Math.round(n));
 const esc = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 function spark(vals){
@@ -130,16 +134,25 @@ function renderSig(){
   const html = d.matches.filter(inLg).map(m=>{
     const sigs = m.signals.filter(s=>lvlTest(s.level));
     if(!sigs.length) return "";
-    return `<div class="match"><div class="mh"><span class="lg">${esc(m.league_name||lgName(m.league))}</span><div class="mrow"><div class="teams">${esc(m.home)} – ${esc(m.away)}</div><div class="ko">${fmtKO(m.kickoff_iso)}</div></div></div>`+
+    return `<div class="match"><div class="mh"><span class="lg">${esc(m.league_name||lgName(m.league))}</span>${m.pm_volume?`<span class="vol">Polymarket hacmi $${fmtK(m.pm_volume)}</span>`:""}<div class="mrow"><div class="teams">${esc(m.home)} – ${esc(m.away)}</div><div class="ko">${fmtKO(m.kickoff_iso)}</div></div></div>`+
       sigs.map(s=>{
         const pin = s.pin ? `<span class="tag">Pinnacle ${s.pin.open.toFixed(2)} → ${s.pin.cur.toFixed(2)} (−${pct(s.pin.drop)})</span>` : "";
         const news = s.news && s.news.length ? `<span class="tag news">Haber var · 1 kademe düşürüldü</span>` : "";
         const late = s.late ? `<span class="tag late">Geç hareket</span>` : "";
+        let conf = "";
+        if(s.asia){
+          const b = s.asia.books||{}, sg = b.singbet||b.sbobet, pn = b.pinnacle;
+          conf += `<span class="tag ${s.asia.confirm?"ok":"no"}">Asya ${s.asia.confirm?"✓":"✗"}${sg?` ${sg.open.toFixed(2)}→${sg.cur.toFixed(2)}`:""}</span>`;
+          if(pn) conf += `<span class="tag">Gerçek açılış ${pn.open.toFixed(2)}</span>`;
+        }
+        if(s.pm){
+          conf += `<span class="tag ${s.pm.confirm?"ok":"no"}">Polymarket ${s.pm.confirm?"✓":"✗"} %${Math.round(s.pm.p_from*100)}→%${Math.round(s.pm.p_to*100)} · 24s: $${fmtK(s.pm.new_vol)} bu tarafa</span>`;
+        }
         const nd = s.news && s.news.length ? `<details><summary>Haberler (${s.news.length})</summary>${s.news.map(n=>`<div>• <a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a></div>`).join("")}</details>`:"";
         return `<div class="sig"><span class="badge b-${s.level}">${LVL[s.level]}</span>
           <div class="pick">${esc(s.pick_label)}<span class="mk">${esc(s.market_label)}</span></div>
           <div class="odds">${s.iddaa.open.toFixed(2)} → <b>${s.iddaa.cur.toFixed(2)}</b><span class="drop">▼ ${pct(s.iddaa.drop)}</span></div>
-          <div class="meta">${spark(s.spark)}${pin}${late}${news}</div>${nd}</div>`;
+          <div class="meta">${spark(s.spark)}${pin}${conf}${late}${news}</div>${nd}</div>`;
       }).join("") + `</div>`;
   }).join("");
   document.getElementById("list").innerHTML = html || `<div class="empty">Bu filtrede sinyal yok.<br><span class="note">Takipte ${d.tracked_matches} maç var. Oranlar yarım saatte bir kontrol ediliyor.</span></div>`;
@@ -148,8 +161,8 @@ function renderSig(){
   document.getElementById("quiet").innerHTML = q.length ? `<div class="quiet"><h4>Sinyalsiz takipteki maçlar (${q.length})</h4>${q.slice(0,40).map(x=>`<div><span>${esc(x.home)} – ${esc(x.away)}</span><small>${esc(lgName(x.league))} · ${fmtKO(x.kickoff_iso)}</small></div>`).join("")}</div>` : "";
 
   const st = d.status||{};
-  const lab = {iddaa:"iddaa",pinnacle:"Pinnacle",news:"Haberler",results:"Skorlar"};
-  document.getElementById("status").innerHTML = "Kaynaklar: " + Object.entries(st).map(([k,v])=>`${lab[k]||k} <span class="${v==="ok"?"ok":"bad"}">${v==="ok"?"✓":esc(v)}</span>`).join(" · ") +
+  const lab = {iddaa:"iddaa",pinnacle:"Pinnacle",polymarket:"Polymarket",asya:"Asya",asya_kota:"Asya aylık kota",news:"Haberler",results:"Skorlar"};
+  document.getElementById("status").innerHTML = "Kaynaklar: " + Object.entries(st).map(([k,v])=>`${lab[k]||k} <span class="${v==="ok"||k==="asya_kota"?"ok":"bad"}">${v==="ok"?"✓":esc(v)}</span>`).join(" · ") +
    `<p class="note">Sinyal = açılıştan bu yana oranı belirgin düşen tercih. Eşikler başlangıç tahminidir; gerçek başarı Karne sekmesinde birikir. Bu araç kazanç garantisi vermez.</p>`;
 }
 
@@ -191,14 +204,25 @@ function renderKarne(){
   const byNews = summarize(E, e=>e.news?"haberli":"habersiz");
   const byLate = summarize(E, e=>e.late?"gec":"erken");
   const recent = [...E].reverse().slice(0,60);
+  const byConf = {...summarize(E.filter(e=>e.asia!=null), e=>e.asia?"asya_ok":"asya_no"), ...summarize(E.filter(e=>e.pm!=null), e=>e.pm?"pm_ok":"pm_no")};
+  const clvRows = LVL_ORDER.map(l=>{
+    const xs = E.filter(e=>e.level===l && e.clv!=null).map(e=>e.clv);
+    if(!xs.length) return "";
+    const avg = xs.reduce((a,b)=>a+b,0)/xs.length, pos = xs.filter(x=>x>0).length/xs.length;
+    return `<tr><td><span class="badge b-${l}">${LVL[l]}</span></td><td>${xs.length}</td><td>${pct(pos)}</td><td class="${avg>=0?"pos":"neg"}">${avg>=0?"+":""}${(avg*100).toFixed(1)}%</td></tr>`;
+  }).join("");
   el.innerHTML =
    `<div class="box"><h3>Güce göre</h3>${tableHtml(byL, LVL_ORDER, k=>`<span class="badge b-${k}">${LVL[k]}</span>`)}
      ${allN<30?`<p class="warn">Örneklem küçük (${allN} sinyal). En az 30–50 sinyal birikmeden sonuçlara güvenme.</p>`:""}
      <p class="note">Getiri: her sinyale 1 birim, maç başlamadan önceki son iddaa oranıyla oynanmış gibi hesaplanır.</p></div>
+   <div class="box"><h3>Kapanış testi</h3>${clvRows?`<table><tr><th></th><th>Sinyal</th><th>Düşüş sürdü</th><th>Ort. fark</th></tr>${clvRows}</table>`:`<p class="note">Henüz veri yok.</p>`}
+     <p class="note">Sinyal ilk çıktığındaki oran ile maç başlarkenki oran karşılaştırılır. Oran düşmeye devam ettiyse sinyal gerçek bilgiyi yakalamıştır. Bu ölçü tutma oranından çok daha hızlı anlam kazanır.</p></div>
+   <div class="box"><h3>Onaylara göre</h3>${tableHtml(byConf, ["asya_ok","asya_no","pm_ok","pm_no"], k=>({asya_ok:"Asya onaylı",asya_no:"Asya onaysız",pm_ok:"Polymarket onaylı",pm_no:"Polymarket onaysız"}[k]))}
+     <p class="note">Onaylar şimdilik gücü otomatik değiştirmiyor. Hangisinin işe yaradığını bu tablo gösterecek; işe yarayanı güce bağlarız.</p></div>
    ${fkLg==="all"?`<div class="box"><h3>Lige göre</h3>${tableHtml(byLg, LEAGUES.map(l=>l.key), lgName)}</div>`:""}
    <div class="box"><h3>Pazara göre</h3>${tableHtml(byM, ["MS","IY","CS","KG","AU"], k=>ML[k])}</div>
    <div class="box"><h3>Haber filtresi ve zamanlama</h3>${tableHtml({...byNews,...byLate}, ["habersiz","haberli","erken","gec"], k=>({habersiz:"Habersiz",haberli:"Haberli",erken:"Erken hareket",gec:"Geç hareket"}[k]))}</div>
-   <div class="box"><h3>Son sinyaller</h3>${recent.map(e=>`<div class="row"><div><span class="badge b-${e.level}">${LVL[e.level]}</span> <b>${esc(e.pick_label)}</b> @${e.odd.toFixed(2)}<div class="note">${esc(lgName(lgOf(e)))} · ${esc(e.home)} – ${esc(e.away)} · <b>${esc(e.score)}</b>${e.ht?` (İY ${esc(e.ht)})`:""} · ${new Date(e.kickoff).toLocaleDateString("tr-TR",{timeZone:TZ})}</div></div><span class="res res-${e.result}">${e.result}</span></div>`).join("")}</div>`;
+   <div class="box"><h3>Son sinyaller</h3>${recent.map(e=>`<div class="row"><div><span class="badge b-${e.level}">${LVL[e.level]}</span> <b>${esc(e.pick_label)}</b> @${e.odd.toFixed(2)}${e.clv!=null?` <span class="${e.clv>=0?"pos":"neg"}" style="font-size:14px">(${e.clv>=0?"+":""}${(e.clv*100).toFixed(0)}%)</span>`:""}${e.asia?" 🌏":""}${e.pm?" 💰":""}<div class="note">${esc(lgName(lgOf(e)))} · ${esc(e.home)} – ${esc(e.away)} · <b>${esc(e.score)}</b>${e.ht?` (İY ${esc(e.ht)})`:""} · ${new Date(e.kickoff).toLocaleDateString("tr-TR",{timeZone:TZ})}</div></div><span class="res res-${e.result}">${e.result}</span></div>`).join("")}</div>`;
 }
 
 function tab(which){

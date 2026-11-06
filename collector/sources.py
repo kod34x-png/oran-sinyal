@@ -199,3 +199,116 @@ def team_news(team, lang="tr"):
             hits.append({"title": re.sub(r"\s+", " ", title)[:160],
                          "link": it.findtext("link"), "ts": ts})
     return hits[:5]
+
+
+# ---------------- Polymarket (maç başı gerçek para hacmi) ----------------
+def polymarket_matches(series_id):
+    """-> [{home, away, kickoff, prices:{1,X,2}, volumes:{1,X,2}, total_volume}]"""
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz
+    from util import team_sim
+    now = now_ts()
+    raw = http_json(f"{C.POLYMARKET_BASE}/events",
+                    {"series_id": series_id, "closed": "false", "limit": 200,
+                     "end_date_min": _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+    out = []
+    for ev in raw if isinstance(raw, list) else []:
+        title = ev.get("title") or ""
+        if " - " in title or " vs. " not in title:
+            continue                                  # yan piyasalar (korner, skor vb.)
+        try:
+            k = parse_iso((ev.get("startTime") or ev.get("endDate")).replace(" ", "T"))
+        except Exception:
+            continue
+        if not (now - 3600 < k < now + 8 * 86400):
+            continue
+        home, away = [x.strip() for x in title.split(" vs. ", 1)]
+        prices, vols = {}, {}
+        for mk in ev.get("markets") or []:
+            if mk.get("sportsMarketType") != "moneyline":
+                continue
+            git = mk.get("groupItemTitle") or ""
+            if git.lower().startswith("draw"):
+                oc = "X"
+            elif team_sim(git, home) >= team_sim(git, away):
+                oc = "1"
+            else:
+                oc = "2"
+            try:
+                p = float(_json.loads(mk.get("outcomePrices") or "[]")[0])
+            except Exception:
+                continue
+            prices[oc] = round(p, 4)
+            vols[oc] = round(float(mk.get("volumeNum") or 0), 2)
+        if len(prices) == 3:
+            out.append({"home": home, "away": away, "kickoff": k, "prices": prices,
+                        "volumes": vols, "total_volume": round(sum(vols.values()), 2)})
+    return out
+
+
+# ---------------- OddsPapi (Asya keskin şirketleri + gerçek açılış) ----------------
+def oddspapi_fixtures(tournament_id):
+    from datetime import datetime as _dt, timezone as _tz
+    raw = http_json(f"{C.ODDSPAPI_BASE}/fixtures", {"tournamentId": tournament_id, "apiKey": C.ODDSPAPI_KEY})
+    now = now_ts()
+    out = []
+    for f in raw if isinstance(raw, list) else []:
+        try:
+            k = parse_iso(f["startTime"].replace(".000Z", "Z"))
+        except Exception:
+            continue
+        if now - 6 * 3600 < k < now + 10 * 86400:
+            out.append({"fid": f["fixtureId"], "home": f.get("participant1Name"),
+                        "away": f.get("participant2Name"), "kickoff": k})
+    return out
+
+
+OP_OUTCOME = {"101": "1", "102": "X", "103": "2"}
+
+
+def oddspapi_history(fixture_id):
+    """-> {bookmaker: {"1": [[ts, price],...], "X": ..., "2": ...}} (1X2 pazarı)"""
+    from util import parse_iso as _p
+    raw = http_json(f"{C.ODDSPAPI_BASE}/historical-odds",
+                    {"fixtureId": fixture_id, "bookmakers": "pinnacle," + ",".join(C.ASIA_BOOKS),
+                     "apiKey": C.ODDSPAPI_KEY})
+    out = {}
+    for bk, v in (raw.get("bookmakers") or {}).items():
+        m = (v.get("markets") or {}).get("101") or {}
+        series = {}
+        for oid, ov in (m.get("outcomes") or {}).items():
+            oc = OP_OUTCOME.get(str(oid))
+            pts = ((ov.get("players") or {}).get("0")) or []
+            s = []
+            for pnt in pts:
+                if not pnt.get("active", True) or not pnt.get("price"):
+                    continue
+                try:
+                    s.append([_p(pnt["createdAt"].replace(".000Z", "Z")[:19] + "Z"), float(pnt["price"])])
+                except Exception:
+                    continue
+            if oc and s:
+                s.sort()
+                series[oc] = s
+        if series:
+            out[bk] = series
+    return out
+
+
+# ---------------- football-data.org (yedek skor) ----------------
+def football_data_results(code, date_from, date_to):
+    """date_* = 'YYYY-MM-DD'"""
+    raw = http_json(f"{C.FOOTBALL_DATA_BASE}/competitions/{code}/matches",
+                    {"dateFrom": date_from, "dateTo": date_to},
+                    headers={"X-Auth-Token": C.FOOTBALL_DATA_KEY})
+    out = []
+    for m in raw.get("matches", []):
+        ft = (m.get("score") or {}).get("fullTime") or {}
+        ht = (m.get("score") or {}).get("halfTime") or {}
+        done = m.get("status") == "FINISHED" and ft.get("home") is not None
+        out.append({"home": m["homeTeam"].get("name"), "away": m["awayTeam"].get("name"),
+                    "kickoff": parse_iso(m["utcDate"]),
+                    "ft": (ft["home"], ft["away"]) if done else None,
+                    "ht": (ht["home"], ht["away"]) if done and ht.get("home") is not None else None,
+                    "done": done, "status": m.get("status")})
+    return out
