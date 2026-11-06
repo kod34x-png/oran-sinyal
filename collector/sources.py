@@ -69,7 +69,13 @@ def pinnacle_events():
         return None
     raw = http_json(f"{C.PINNWIRE_BASE}/kit/v1/prematch/fixtures", {"sport_id": 1},
                     headers={"x-api-key": C.PINNWIRE_KEY})
-    items = raw if isinstance(raw, list) else (raw.get("events") or raw.get("data") or [])
+    items = raw if isinstance(raw, list) else (raw.get("events") or raw.get("data") or raw.get("fixtures") or [])
+    if isinstance(items, dict):
+        items = items.get("events") or items.get("fixtures") or list(items.values())
+    leagues = sorted({str(e.get("league_name")) for e in items if isinstance(e, dict)})
+    print(f"[pinnacle] yanıt: {type(raw).__name__} anahtarlar={list(raw)[:8] if isinstance(raw, dict) else '-'} "
+          f"etkinlik={len(items)} lig={len(leagues)}")
+    print("[pinnacle] türk ligleri:", [l for l in leagues if "turk" in l.lower() or "türk" in l.lower()][:10])
     out = []
     for ev in items:
         ln = (ev.get("league_name") or "").lower()
