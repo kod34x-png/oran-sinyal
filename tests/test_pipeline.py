@@ -45,17 +45,17 @@ assert util.team_sim("Fenerbahçe", "Fenerbahce") == 1.0
 
 
 def fake_iddaa(odds):
-    return lambda catalog: [{"iddaa_id": 111, "home": "Fenerbahçe", "away": "Başakşehir FK",
+    return lambda catalog: [{"league": "TR1", "iddaa_id": 111, "home": "Fenerbahçe", "away": "Başakşehir FK",
                              "kickoff": KO, "live": False, "odds": odds}]
 
 
 def fake_pin(odds):
-    return lambda: [{"pin_id": 9, "home": "Fenerbahce", "away": "Istanbul Basaksehir",
+    return lambda: [{"league": "TR1", "pin_id": 9, "home": "Fenerbahce", "away": "Istanbul Basaksehir",
                      "kickoff": KO + 60, "odds": odds}]
 
 
-sources.team_news = lambda team: []
-sources.espn_results = lambda a, b: [{"home": "Fenerbahçe", "away": "Başakşehir",
+sources.team_news = lambda team, lang="tr": []
+sources.espn_results = lambda code, a, b: [{"home": "Fenerbahçe", "away": "Başakşehir",
                                       "kickoff": KO, "ft": (0, 2), "ht": (0, 1), "done": True}]
 
 runs = [

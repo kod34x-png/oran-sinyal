@@ -22,15 +22,40 @@ def iddaa_market_config():
     return out
 
 
+def iddaa_league_map():
+    """iddaa yarışma id -> lig key. Adla çözülür, bulunamazsa yedek ci."""
+    by_name = {}
+    try:
+        comps = http_json(f"{C.IDDAA_BASE}/competitions").get("data", [])
+        for c in comps:
+            if str(c.get("si")) == "1":
+                by_name[(c.get("n") or "").strip()] = c.get("i")
+    except Exception as e:
+        print(f"[iddaa] yarışma listesi alınamadı: {e}")
+    out = {}
+    for lg in C.LEAGUES:
+        ci = by_name.get(lg["iddaa"], lg["ci"])
+        if ci is None:
+            print(f"[iddaa] UYARI: '{lg['iddaa']}' bulunamadı")
+            continue
+        out[int(ci)] = lg["key"]
+    return out
+
+
 def iddaa_events(catalog):
-    """Süper Lig maçları + takip edilen pazar oranları.
+    """Takip edilen liglerin maçları + pazar oranları.
     catalog: state'teki pazar kataloğu (yerinde güncellenir)."""
     names = iddaa_market_config()
+    leagues = iddaa_league_map()
     raw = http_json(f"{C.IDDAA_BASE}/events", {"st": 1, "type": 0, "version": 0})
     events = raw.get("data", {}).get("events", [])
     out = []
     for ev in events:
-        if ev.get("ci") != C.IDDAA_SUPER_LIG_CI:
+        try:
+            lkey = leagues.get(int(ev.get("ci")))
+        except (TypeError, ValueError):
+            lkey = None
+        if not lkey:
             continue
         odds = {}
         for m in ev.get("m", []) or []:
@@ -53,6 +78,7 @@ def iddaa_events(catalog):
                     continue
                 odds[f"{mk}|{canon_outcome(fam[0], o.get('n', ''))}"] = round(float(odd), 2)
         out.append({
+            "league": lkey,
             "iddaa_id": ev.get("i"),
             "home": ev.get("hn"),
             "away": ev.get("an"),
@@ -75,13 +101,15 @@ def pinnacle_events():
     leagues = sorted({str(e.get("league_name")) for e in items if isinstance(e, dict)})
     print(f"[pinnacle] yanıt: {type(raw).__name__} anahtarlar={list(raw)[:8] if isinstance(raw, dict) else '-'} "
           f"etkinlik={len(items)} lig={len(leagues)}")
-    print("[pinnacle] türk ligleri:", [l for l in leagues if "turk" in l.lower() or "türk" in l.lower()][:10])
+    want = {lg["pin"].lower(): lg["key"] for lg in C.LEAGUES}
+    missing = [n for n in want if n not in {l.lower() for l in leagues}]
+    if missing:
+        print("[pinnacle] UYARI: bulunamayan ligler:", missing,
+              "| benzerleri:", [l for l in leagues if any(w.split(" - ")[0] in l.lower() for w in missing)][:15])
     out = []
     for ev in items:
-        ln = (ev.get("league_name") or "").lower()
-        if not all(h in ln for h in C.PINNACLE_LEAGUE_HINTS):
-            continue
-        if any(x in ln for x in ("women", "kadın", "u19", "u21", "cup", "kupa")):
+        lkey = want.get((ev.get("league_name") or "").lower())
+        if not lkey:
             continue
         p0 = (ev.get("periods") or {}).get("num_0") or {}
         odds = {}
@@ -104,15 +132,15 @@ def pinnacle_events():
             k = parse_iso(ev["starts"])
         except Exception:
             continue
-        out.append({"pin_id": ev.get("event_id"), "home": ev.get("home"),
+        out.append({"league": lkey, "pin_id": ev.get("event_id"), "home": ev.get("home"),
                     "away": ev.get("away"), "kickoff": k, "odds": odds})
     return out
 
 
 # ---------------- ESPN skorlar ----------------
-def espn_results(date_from, date_to):
+def espn_results(code, date_from, date_to):
     """date_* = 'YYYYMMDD'. -> [{home, away, kickoff, ft:(h,a), ht:(h,a)|None, done}]"""
-    raw = http_json(C.ESPN_SCOREBOARD, {"dates": f"{date_from}-{date_to}", "limit": 200})
+    raw = http_json(C.ESPN_SCOREBOARD.format(code=code), {"dates": f"{date_from}-{date_to}", "limit": 300})
     out = []
     for ev in raw.get("events", []):
         comp = (ev.get("competitions") or [{}])[0]
@@ -147,15 +175,16 @@ def espn_results(date_from, date_to):
 
 
 # ---------------- Haberler ----------------
-def team_news(team):
+def team_news(team, lang="tr"):
     """Takımla ilgili son NEWS_WINDOW_HOURS içindeki kritik haber başlıkları."""
-    kw = " OR ".join(f'"{k}"' for k in ("sakat", "cezalı", "kadro dışı", "oynamayacak"))
+    kw = " OR ".join(f'"{k}"' for k in C.NEWS_QUERY[lang])
     q = f'"{team}" ({kw}) when:2d'
-    txt = http_get(C.NEWS_RSS, {"q": q, "hl": "tr", "gl": "TR", "ceid": "TR:tr"},
-                   headers={"Accept": "application/rss+xml, application/xml"})
+    txt = http_get(C.NEWS_RSS, {"q": q, **C.NEWS_LOCALE[lang]},
+                   headers={"Accept": "application/rss+xml, application/xml"}, retries=1)
     root = ET.fromstring(txt)
     cutoff = now_ts() - C.NEWS_WINDOW_HOURS * 3600
-    tname = team.lower().split()[0]
+    words = [w for w in re.sub(r"[^\w ]", " ", team.lower()).split() if len(w) >= 4 and w not in ("united", "city", "club", "spor")]
+    tname = max(words, key=len) if words else team.lower()
     hits = []
     for it in root.iter("item"):
         title = (it.findtext("title") or "").strip()

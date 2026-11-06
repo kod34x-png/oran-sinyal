@@ -4,6 +4,7 @@ import sys
 import traceback
 from datetime import datetime, timezone, timedelta
 
+import time
 import config as C
 import sources
 import signals
@@ -24,12 +25,16 @@ def append_point(series_map, key, ts, odd):
         s.append([ts, odd])
 
 
-def get_news(cache, team, status):
+LEAGUE = {lg["key"]: lg for lg in C.LEAGUES}
+
+
+def get_news(cache, team, lang, status):
     ent = cache.get(team)
     if ent and now_ts() - ent["ts"] < C.NEWS_CACHE_HOURS * 3600:
         return ent["hits"]
     try:
-        hits = sources.team_news(team)
+        time.sleep(0.4)
+        hits = sources.team_news(team, lang)
         cache[team] = {"ts": now_ts(), "hits": hits}
         return hits
     except Exception as e:
@@ -53,20 +58,23 @@ def main():
     except Exception as e:
         id_events = []
         status["iddaa"] = f"hata: {str(e)[:160]}"
-    print(f"[iddaa] {len(id_events)} Süper Lig maçı")
+    from collections import Counter
+    print(f"[iddaa] {len(id_events)} maç", dict(Counter(e["league"] for e in id_events)))
 
     # 2) Pinnacle
     pin_events = []
     if C.PINNWIRE_KEY:
         try:
             pin_events = sources.pinnacle_events() or []
-            print(f"[pinnacle] {len(pin_events)} maç")
+            print(f"[pinnacle] {len(pin_events)} maç", dict(Counter(e["league"] for e in pin_events)))
             if not pin_events:
-                status["pinnacle"] = "Süper Lig maçı bulunamadı"
+                status["pinnacle"] = "maç bulunamadı"
         except Exception as e:
             status["pinnacle"] = f"hata: {str(e)[:160]}"
 
-    pin_cands = [(p, p["home"], p["away"], p["kickoff"]) for p in pin_events]
+    pin_cands = {}
+    for p in pin_events:
+        pin_cands.setdefault(p["league"], []).append((p, p["home"], p["away"], p["kickoff"]))
 
     # 3) geçmişe ekle
     for ev in id_events:
@@ -77,9 +85,10 @@ def main():
             "home": ev["home"], "away": ev["away"], "kickoff": ev["kickoff"],
             "first_seen": ts, "src": {"iddaa": {}, "pin": {}}})
         m["kickoff"] = ev["kickoff"]
+        m["league"] = ev["league"]
         for k, odd in ev["odds"].items():
             append_point(m["src"]["iddaa"], k, ts, odd)
-        p = match_pair(ev["home"], ev["away"], ev["kickoff"], pin_cands)
+        p = match_pair(ev["home"], ev["away"], ev["kickoff"], pin_cands.get(ev["league"], []))
         if p:
             m["pin_id"] = p["pin_id"]
             for k, odd in p["odds"].items():
@@ -93,59 +102,69 @@ def main():
             if not m.get("locked"):
                 news = (m.get("news_at_lock") or [])
                 sigs = signals.compute(m, lock_ts, until_ts=lock_ts, news_hits=news)
-                pending.append({"id": mid, "home": m["home"], "away": m["away"],
+                pending.append({"id": mid, "league": m.get("league", "TR1"), "home": m["home"], "away": m["away"],
                                 "kickoff": m["kickoff"], "signals": sigs, "tries": 0})
                 m["locked"] = True
             continue
         hours_left = (m["kickoff"] - ts) / 3600
         news = []
         if hours_left <= 48:
-            news = get_news(news_cache, m["home"], status) + get_news(news_cache, m["away"], status)
+            lang = LEAGUE.get(m.get("league", "TR1"), {}).get("lang", "tr")
+            news = get_news(news_cache, m["home"], lang, status) + get_news(news_cache, m["away"], lang, status)
             m["news_at_lock"] = news
         sigs = signals.compute(m, ts, news_hits=news)
-        upcoming.append({"id": mid, "home": m["home"], "away": m["away"],
+        lk = m.get("league", "TR1")
+        upcoming.append({"id": mid, "league": lk, "league_name": LEAGUE.get(lk, {}).get("name", lk),
+                         "home": m["home"], "away": m["away"],
                          "kickoff": m["kickoff"], "kickoff_iso": iso(m["kickoff"]),
                          "tracking_since": iso(m["first_seen"]),
                          "pinnacle": bool(m.get("pin_id")),
                          "signals": [{k: v for k, v in s.items() if k != "raw_level"} for s in sigs]})
 
-    # 5) sonuçlar -> karne
+    # 5) sonuçlar -> karne (lig lig)
     due = [p for p in pending if ts > p["kickoff"] + int(2.5 * 3600)]
-    if due:
-        d0 = datetime.fromtimestamp(min(p["kickoff"] for p in due), tz=timezone.utc) - timedelta(days=1)
-        d1 = datetime.fromtimestamp(max(p["kickoff"] for p in due), tz=timezone.utc) + timedelta(days=1)
+    settled_ids, failed = set(), []
+    for lk in sorted({p.get("league", "TR1") for p in due}):
+        group = [p for p in due if p.get("league", "TR1") == lk]
+        d0 = datetime.fromtimestamp(min(p["kickoff"] for p in group), tz=timezone.utc) - timedelta(days=1)
+        d1 = datetime.fromtimestamp(max(p["kickoff"] for p in group), tz=timezone.utc) + timedelta(days=1)
         try:
-            res = sources.espn_results(d0.strftime("%Y%m%d"), d1.strftime("%Y%m%d"))
-            cands = [(r, r["home"], r["away"], r["kickoff"]) for r in res]
-            keep = []
-            for p in pending:
-                if p not in due:
-                    keep.append(p)
-                    continue
-                r = match_pair(p["home"], p["away"], p["kickoff"], cands, window_h=30)
-                if r and r["done"] and r["ft"]:
-                    for s in p["signals"]:
-                        ok = settle(s["market"], s["pick"], r["ft"], r["ht"])
-                        karne["entries"].append({
-                            "id": p["id"], "home": p["home"], "away": p["away"],
-                            "kickoff": iso(p["kickoff"]), "score": f"{r['ft'][0]}-{r['ft'][1]}",
-                            "ht": f"{r['ht'][0]}-{r['ht'][1]}" if r["ht"] else None,
-                            "market": s["market"], "pick_label": s["pick_label"],
-                            "level": s["level"], "raw_level": s.get("raw_level", s["level"]),
-                            "odd": s["iddaa"]["cur"], "pin_odd": (s["pin"] or {}).get("cur"),
-                            "news": bool(s.get("news")), "late": s.get("late", False),
-                            "result": "iade" if ok is None else ("tuttu" if ok else "tutmadı"),
-                        })
-                    hist["matches"].pop(p["id"], None)
-                else:
-                    p["tries"] += 1
-                    if p["tries"] < 72:          # ~3 gün dene
-                        keep.append(p)
-                    else:
-                        hist["matches"].pop(p["id"], None)
-            pending = keep
+            res = sources.espn_results(LEAGUE[lk]["espn"], d0.strftime("%Y%m%d"), d1.strftime("%Y%m%d"))
         except Exception as e:
-            status["results"] = f"hata: {str(e)[:160]}"
+            failed.append(f"{lk}: {str(e)[:80]}")
+            continue
+        cands = [(r, r["home"], r["away"], r["kickoff"]) for r in res]
+        for p in group:
+            r = match_pair(p["home"], p["away"], p["kickoff"], cands, window_h=30)
+            if not (r and r["done"] and r["ft"]):
+                continue
+            for s_ in p["signals"]:
+                ok = settle(s_["market"], s_["pick"], r["ft"], r["ht"])
+                karne["entries"].append({
+                    "id": p["id"], "league": lk, "home": p["home"], "away": p["away"],
+                    "kickoff": iso(p["kickoff"]), "score": f"{r['ft'][0]}-{r['ft'][1]}",
+                    "ht": f"{r['ht'][0]}-{r['ht'][1]}" if r["ht"] else None,
+                    "market": s_["market"], "pick_label": s_["pick_label"],
+                    "level": s_["level"], "raw_level": s_.get("raw_level", s_["level"]),
+                    "odd": s_["iddaa"]["cur"], "pin_odd": (s_["pin"] or {}).get("cur"),
+                    "news": bool(s_.get("news")), "late": s_.get("late", False),
+                    "result": "iade" if ok is None else ("tuttu" if ok else "tutmadı"),
+                })
+            settled_ids.add(p["id"])
+    if failed:
+        status["results"] = "hata: " + "; ".join(failed)[:200]
+    keep = []
+    for p in pending:
+        if p["id"] in settled_ids:
+            hist["matches"].pop(p["id"], None)
+            continue
+        if p in due:
+            p["tries"] += 1
+            if p["tries"] >= 72:                 # ~3 gün denendi, bırak
+                hist["matches"].pop(p["id"], None)
+                continue
+        keep.append(p)
+    pending = keep
 
     # 6) yaz
     upcoming.sort(key=lambda x: x["kickoff"])
@@ -153,7 +172,8 @@ def main():
     save_json(SIGNALS, {
         "updated": iso(ts), "status": status,
         "tracked_matches": len(upcoming), "matches": with_sig,
-        "quiet_matches": [{"home": u["home"], "away": u["away"], "kickoff_iso": u["kickoff_iso"]}
+        "leagues": [{"key": lg["key"], "name": lg["name"]} for lg in C.LEAGUES],
+        "quiet_matches": [{"league": u["league"], "home": u["home"], "away": u["away"], "kickoff_iso": u["kickoff_iso"]}
                           for u in upcoming if not u["signals"]],
     })
     karne["updated"] = iso(ts)

@@ -8,22 +8,36 @@ WEB_DATA = ROOT / "web" / "data"
 
 # iddaa.com resmi bülten
 IDDAA_BASE = "https://sportsbookv2.iddaa.com/sportsbook"
-IDDAA_SUPER_LIG_CI = 584          # "Türkiye Süper Lig"
+# Ligler: iddaa adı (ci çalışırken bulunur, yedek ci), Pinnacle adı, ESPN kodu, haber dili
+LEAGUES = [
+    {"key": "TR1", "name": "Süper Lig",      "iddaa": "Türkiye Süper Lig",     "ci": 584,  "pin": "Turkey - Super League",   "espn": "tur.1", "lang": "tr"},
+    {"key": "TR2", "name": "1. Lig",         "iddaa": "Türkiye 1. Lig",        "ci": 1980, "pin": "Turkey - 1st League",     "espn": "tur.2", "lang": "tr"},
+    {"key": "ENG", "name": "Premier Lig",    "iddaa": "İngiltere Premier Lig", "ci": 43,   "pin": "England - Premier League", "espn": "eng.1", "lang": "en"},
+    {"key": "ESP", "name": "La Liga",        "iddaa": "İspanya La Liga",       "ci": 129,  "pin": "Spain - La Liga",         "espn": "esp.1", "lang": "en"},
+    {"key": "ITA", "name": "Serie A",        "iddaa": "İtalya Serie A",        "ci": None, "pin": "Italy - Serie A",         "espn": "ita.1", "lang": "en"},
+    {"key": "GER", "name": "Bundesliga",     "iddaa": "Almanya Bundesliga",    "ci": 45,   "pin": "Germany - Bundesliga",    "espn": "ger.1", "lang": "en"},
+    {"key": "FRA", "name": "Ligue 1",        "iddaa": "Fransa Ligue 1",        "ci": 381,  "pin": "France - Ligue 1",        "espn": "fra.1", "lang": "en"},
+]
 
 # Pinnacle (PinnWire). Anahtar yoksa bu kaynak atlanır.
 PINNWIRE_KEY = os.environ.get("PINNWIRE_KEY", "").strip()
 PINNWIRE_BASE = "https://pinnwire.com"
-PINNACLE_LEAGUE_HINTS = ("turkey", "super")   # Pinnacle adı: "Turkey - Super League"   # league_name içinde aranır
 
 # Skorlar (karne için)
-ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/scoreboard"
-ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/summary"
+ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/soccer/{code}/scoreboard"
 
 # Haber filtresi
 NEWS_RSS = "https://news.google.com/rss/search"
 NEWS_WINDOW_HOURS = 36
 NEWS_CACHE_HOURS = 6
+NEWS_QUERY = {
+    "tr": ("sakat", "cezalı", "kadro dışı", "oynamayacak"),
+    "en": ("injury", "injured", "suspended", "ruled out"),
+}
+NEWS_LOCALE = {"tr": {"hl": "tr", "gl": "TR", "ceid": "TR:tr"},
+               "en": {"hl": "en-GB", "gl": "GB", "ceid": "GB:en"}}
 NEWS_KEYWORDS = (
+    "injur", "suspend", "ruled out", "doubt", "sidelined", "sacked", "red card",
     "sakat", "sakatlık", "cezalı", "kadro dışı", "forma giyemeyecek",
     "oynayamayacak", "oynamayacak", "kart cezası", "ameliyat", "kırmızı kart",
     "teknik direktör", "istifa", "görevden", "kriz",
