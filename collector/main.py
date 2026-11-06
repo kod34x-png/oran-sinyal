@@ -70,7 +70,7 @@ def main():
 
     # 3) geçmişe ekle
     for ev in id_events:
-        if ev["live"] or ev["kickoff"] <= ts:
+        if ev["kickoff"] <= ts:   # not: "il" alanı canlı oynanabilirlik bayrağı, canlı maç değil
             continue
         mid = str(ev["iddaa_id"])
         m = hist["matches"].setdefault(mid, {

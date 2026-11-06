@@ -27,6 +27,16 @@ assert markets.family_of(2, 92, None, "", ["1 ve 0", "1 ve 2", "0 ve 2"]) == ("C
 assert markets.family_of(2, 100, "1", "", ["1", "0", "2"]) is None
 assert markets.family_of(2, 88, None, "1st Half Result", ["1", "0", "2"]) == ("IY", None)
 assert markets.family_of(2, 603, "0.5", "1st half totals", ["Alt", "Üst"]) is None
+REAL = {"1_1":("Maç Sonucu",["1","0","2"],None,("MS",None)),"2_88":("1. Yarı Sonucu",["1","0","2"],None,("IY",None)),
+ "2_36":("2. Yarı Sonucu",["1","0","2"],None,None),"2_100":("Handikaplı Maç Sonucu {h}",["1","0","2"],"1",None),
+ "2_89":("Karşılıklı Gol",["Var","Yok"],None,("KG",None)),"2_720":("1. Yarı Karşılıklı Gol",["Var","Yok"],None,None),
+ "2_92":("Çifte Şans",["1 ve 0","1 ve 2","0 ve 2"],None,("CS",None)),"2_77":("1. Yarı Çifte Şans",["1 ve 0","1 ve 2","0 ve 2"],None,None),
+ "2_101":("Alt/Üst {0}",["Alt","Üst"],"2.5",("AU",2.5)),"2_60":("1. Yarı Alt/Üst {0}",["Alt","Üst"],"0.5",None),
+ "2_603":("Ev Sahibi Alt/Üst {0}",["Alt","Üst"],"1.5",None),"2_48":("Toplam Korner Sayısı Alt/Üst {0}",["Alt","Üst"],"8.5",None),
+ "2_722":("Ev Sahibi 1. Yarı Altı/Üstü {0}",["Alt","Üst"],"0.5",None)}
+for k,(n,o,sov,exp) in REAL.items():
+    t,st=map(int,k.split("_")); got=markets.family_of(t,st,sov,n,o)
+    assert got==exp,(k,n,got,exp)
 assert markets.settle("AU2.5", "Üst", (2, 1)) is True
 assert markets.settle("CS", "X2", (1, 1)) is True
 assert markets.settle("KG", "Var", (1, 0)) is False

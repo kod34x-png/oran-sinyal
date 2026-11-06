@@ -24,7 +24,7 @@ def family_of(t, st, sov, name, outcomes):
     """-> (family, line) veya None"""
     n = (name or "").lower()
     outs = {o.strip().lower() for o in outcomes}
-    first_half = _has(n, ("1st half", "first half", "ilk yarı", "ilk yari", "half time", "half-time", "ht "))
+    first_half = _has(n, ("1. yarı", "1.yarı", "1st half", "first half", "ilk yarı", "ilk yari", "half time", "half-time", "ht "))
     excluded = _has(n, EXCLUDE_HINTS)
 
     if outs == {"1", "0", "2"}:
