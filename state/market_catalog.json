@@ -1,0 +1,240 @@
+{
+ "2_101": {
+  "name": "Alt/Üst {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "2.5"
+ },
+ "2_60": {
+  "name": "1. Yarı Alt/Üst {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "0.5"
+ },
+ "2_7": {
+  "name": "Maç Sonucu ve Alt/Üst {0}",
+  "outcomes": [
+   "1 ve Alt",
+   "0 ve Alt",
+   "2 ve Alt",
+   "1 ve Üst",
+   "0 ve Üst",
+   "2 ve Üst"
+  ],
+  "sov": "2.5"
+ },
+ "2_700": {
+  "name": "Altı/Üstü {0} ve Karşılıklı Gol",
+  "outcomes": [
+   "Alt ve Var",
+   "Üst ve Var",
+   "Alt ve Yok",
+   "Üst ve Yok"
+  ],
+  "sov": "2.5"
+ },
+ "2_36": {
+  "name": "2. Yarı Sonucu",
+  "outcomes": [
+   "1",
+   "0",
+   "2"
+  ],
+  "sov": null
+ },
+ "1_1": {
+  "name": "Maç Sonucu",
+  "outcomes": [
+   "1",
+   "0",
+   "2"
+  ],
+  "sov": null
+ },
+ "2_100": {
+  "name": "Handikaplı Maç Sonucu {h}",
+  "outcomes": [
+   "1",
+   "0",
+   "2"
+  ],
+  "sov": "1"
+ },
+ "2_4": {
+  "name": "Toplam Gol",
+  "outcomes": [
+   "0-1 gol",
+   "2-3 gol",
+   "4-5 gol",
+   "6+ gol"
+  ],
+  "sov": null
+ },
+ "2_89": {
+  "name": "Karşılıklı Gol",
+  "outcomes": [
+   "Var",
+   "Yok"
+  ],
+  "sov": null
+ },
+ "2_48": {
+  "name": "Toplam Korner Sayısı Alt/Üst {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "8.5"
+ },
+ "2_88": {
+  "name": "1. Yarı Sonucu",
+  "outcomes": [
+   "1",
+   "0",
+   "2"
+  ],
+  "sov": null
+ },
+ "2_92": {
+  "name": "Çifte Şans",
+  "outcomes": [
+   "1 ve 0",
+   "1 ve 2",
+   "0 ve 2"
+  ],
+  "sov": null
+ },
+ "2_77": {
+  "name": "1. Yarı Çifte Şans",
+  "outcomes": [
+   "1 ve 0",
+   "1 ve 2",
+   "0 ve 2"
+  ],
+  "sov": null
+ },
+ "2_91": {
+  "name": "Tek / Çift",
+  "outcomes": [
+   "Tek",
+   "Çift"
+  ],
+  "sov": null
+ },
+ "2_720": {
+  "name": "1. Yarı Karşılıklı Gol",
+  "outcomes": [
+   "Var",
+   "Yok"
+  ],
+  "sov": null
+ },
+ "2_49": {
+  "name": "1. Yarı Toplam Korner Sayısı Alt/Üst {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "4.5"
+ },
+ "2_90": {
+  "name": "1. Yarı / Maç Sonucu",
+  "outcomes": [
+   "1/1",
+   "1/0",
+   "1/2",
+   "0/1",
+   "0/0",
+   "0/2",
+   "2/1",
+   "2/0",
+   "2/2"
+  ],
+  "sov": null
+ },
+ "2_603": {
+  "name": "Ev Sahibi Alt/Üst {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "1.5"
+ },
+ "2_604": {
+  "name": "Deplasman Alt/Üst {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "1.5"
+ },
+ "2_69": {
+  "name": "Ev Sahibi Her İki Yarıyı Kazanır",
+  "outcomes": [
+   "Evet",
+   "Hayır"
+  ],
+  "sov": null
+ },
+ "2_72": {
+  "name": "Deplasman Her İki Yarıyı Kazanır",
+  "outcomes": [
+   "Evet",
+   "Hayır"
+  ],
+  "sov": null
+ },
+ "2_722": {
+  "name": "Ev Sahibi 1. Yarı Altı/Üstü {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "0.5"
+ },
+ "2_723": {
+  "name": "Deplasman 1. Yarı Altı/Üstü {0}",
+  "outcomes": [
+   "Alt",
+   "Üst"
+  ],
+  "sov": "0.5"
+ },
+ "2_698": {
+  "name": "Maç Sonucu ve Karşılıklı Gol",
+  "outcomes": [
+   "1 ve Var",
+   "1 ve Yok",
+   "0 ve Var",
+   "0 ve Yok",
+   "2 ve Var",
+   "2 ve Yok"
+  ],
+  "sov": null
+ },
+ "2_6": {
+  "name": "Hangi Yarıda Daha Fazla Gol Olur",
+  "outcomes": [
+   "1.",
+   "Eşit",
+   "2."
+  ],
+  "sov": null
+ },
+ "2_699": {
+  "name": "1. Yarı Sonucu ve İlk Yarı Karşılıklı Gol",
+  "outcomes": [
+   "1 ve Var",
+   "1 ve Yok",
+   "0 ve Var",
+   "0 ve Yok",
+   "2 ve Var",
+   "2 ve Yok"
+  ],
+  "sov": null
+ }
+}
