@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Oran Sinyal · Süper Lig</title>
+<style>
+:root{--bg:#0d0f12;--card:#161a1f;--line:#252b33;--tx:#e8ecf1;--mut:#8a94a3;
+--red:#ff4d4f;--org:#ff9f1a;--yel:#f5d33f;--grn:#2ecc71;--bad:#e5484d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding-bottom:40px}
+header{position:sticky;top:0;background:rgba(13,15,18,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:5}
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px}
+h1{font-size:17px;margin:0;letter-spacing:.3px}
+h1 span{color:var(--mut);font-weight:500}
+.upd{font-size:12px;color:var(--mut)}
+nav{display:flex;gap:6px;padding:0 12px 10px}
+nav button{flex:1;background:var(--card);color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:9px;font-size:14px;font-weight:600}
+nav button.on{color:var(--tx);border-color:#3a434f;background:#1d232a}
+main{max-width:720px;margin:0 auto;padding:12px}
+.filters{display:flex;gap:6px;margin:4px 0 12px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:5px 11px;font-size:13px}
+.chip.on{color:var(--tx);border-color:#4a5563}
+.match{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.mh{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px 8px;gap:10px}
+.teams{font-weight:700;font-size:15.5px}
+.ko{color:var(--mut);font-size:13px;white-space:nowrap}
+.sig{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.badge{font-size:11.5px;font-weight:800;padding:4px 8px;border-radius:7px;white-space:nowrap;letter-spacing:.2px}
+.b-cok_guclu{background:rgba(255,77,79,.16);color:var(--red)}
+.b-guclu{background:rgba(255,159,26,.16);color:var(--org)}
+.b-zayif{background:rgba(245,211,63,.13);color:var(--yel)}
+.pick{font-weight:700;font-size:15px}
+.mk{color:var(--mut);font-size:12.5px;font-weight:500;margin-left:6px}
+.odds{font-variant-numeric:tabular-nums;text-align:right;font-size:14px;white-space:nowrap}
+.odds b{color:var(--grn)}
+.meta{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:12px;align-items:center}
+.tag{border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.tag.news{border-color:#5b3a3a;color:#f2a3a3}
+svg.sp{vertical-align:middle}
+details{grid-column:1/-1;font-size:12.5px;color:var(--mut)}
+details a{color:#9cc3ff}
+.empty{text-align:center;color:var(--mut);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:14px}
+.quiet{color:var(--mut);font-size:13px;margin-top:18px}
+.quiet li{margin:3px 0}
+.status{font-size:12px;color:var(--mut);margin-top:22px;border-top:1px solid var(--line);padding-top:10px}
+.status .bad{color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:600;font-size:12.5px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.box h3{margin:0 0 8px;font-size:14px}
+.pos{color:var(--grn)}.neg{color:var(--bad)}
+.warn{font-size:12.5px;color:var(--yel);margin:6px 0 0}
+.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.row:last-child{border:0}
+.res-tuttu{color:var(--grn);font-weight:700}.res-tutmadı{color:var(--bad);font-weight:700}.res-iade{color:var(--mut)}
+.note{font-size:12px;color:var(--mut);line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>Oran Sinyal <span>· Süper Lig</span></h1><div class="upd" id="upd">…</div></div>
+  <nav><button id="t-sig" class="on">Sinyaller</button><button id="t-karne">Karne</button></nav>
+</header>
+<main>
+  <section id="v-sig">
+    <div class="filters" id="filters"></div>
+    <div id="list"></div>
+    <div id="quiet"></div>
+    <div class="status" id="status"></div>
+  </section>
+  <section id="v-karne" hidden>
+    <div id="karne"></div>
+  </section>
+</main>
+<script>
+const TZ = "Europe/Istanbul";
+const LVL = {cok_guclu:"Çok güçlü", guclu:"Güçlü", zayif:"Zayıf"};
+const LVL_ORDER = ["cok_guclu","guclu","zayif"];
+let SIG = null, KARNE = null, filt = "all";
+
+const fmtKO = iso => new Date(iso).toLocaleString("tr-TR",{timeZone:TZ,weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const pct = x => (x*100).toFixed(0)+"%";
+const esc = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function spark(vals){
+  if(!vals || vals.length<2) return "";
+  const w=70,h=20,mn=Math.min(...vals),mx=Math.max(...vals),r=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(" ");
+  return `<svg class="sp" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline fill="none" stroke="#2ecc71" stroke-width="1.6" points="${pts}"/></svg>`;
+}
+
+function renderSig(){
+  const d = SIG;
+  document.getElementById("upd").textContent = "Güncelleme: " + new Date(d.updated).toLocaleTimeString("tr-TR",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+  const counts = {all:0,cok_guclu:0,guclu:0,zayif:0};
+  d.matches.forEach(m=>m.signals.forEach(s=>{counts.all++;counts[s.level]++;}));
+  document.getElementById("filters").innerHTML =
+    [["all","Tümü"],...LVL_ORDER.map(l=>[l,LVL[l]])].map(([k,t])=>`<button class="chip ${filt===k?"on":""}" data-f="${k}">${t} (${counts[k]})</button>`).join("");
+  document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{filt=b.dataset.f;renderSig();});
+
+  const html = d.matches.map(m=>{
+    const sigs = m.signals.filter(s=>filt==="all"||s.level===filt);
+    if(!sigs.length) return "";
+    return `<div class="match"><div class="mh"><div class="teams">${esc(m.home)} – ${esc(m.away)}</div><div class="ko">${fmtKO(m.kickoff_iso)}</div></div>`+
+      sigs.map(s=>{
+        const pin = s.pin ? `<span class="tag">Pinnacle ${s.pin.open.toFixed(2)}→${s.pin.cur.toFixed(2)} (−${pct(s.pin.drop)})</span>` : "";
+        const news = s.news && s.news.length ? `<span class="tag news">Haber var · 1 kademe düşürüldü</span>` : "";
+        const late = s.late ? `<span class="tag">Geç hareket</span>` : "";
+        const nd = s.news && s.news.length ? `<details><summary>Haberler (${s.news.length})</summary>${s.news.map(n=>`<div>• <a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a></div>`).join("")}</details>`:"";
+        return `<div class="sig"><span class="badge b-${s.level}">${LVL[s.level]}</span>
+          <div class="pick">${esc(s.pick_label)}<span class="mk">${esc(s.market_label)}</span></div>
+          <div class="odds">${s.iddaa.open.toFixed(2)} → <b>${s.iddaa.cur.toFixed(2)}</b><div class="mk" style="margin:0">−${pct(s.iddaa.drop)} iddaa</div></div>
+          <div class="meta">${spark(s.spark)}${pin}${late}${news}</div>${nd}</div>`;
+      }).join("") + `</div>`;
+  }).join("");
+  document.getElementById("list").innerHTML = html || `<div class="empty">Şu an sinyal veren maç yok.<br><span class="note">Takipteki maç: ${d.tracked_matches}. Oranlar yarım saatte bir kontrol ediliyor.</span></div>`;
+
+  const q = d.quiet_matches || [];
+  document.getElementById("quiet").innerHTML = q.length ? `<div class="quiet">Sinyalsiz takipteki maçlar:<ul>${q.map(x=>`<li>${esc(x.home)} – ${esc(x.away)} · ${fmtKO(x.kickoff_iso)}</li>`).join("")}</ul></div>` : "";
+
+  const st = d.status||{};
+  const lab = {iddaa:"iddaa",pinnacle:"Pinnacle",news:"Haberler",results:"Skorlar"};
+  document.getElementById("status").innerHTML = "Kaynaklar: " + Object.entries(st).map(([k,v])=>`${lab[k]||k}: <span class="${v==="ok"?"":"bad"}">${esc(v)}</span>`).join(" · ") +
+   `<p class="note">Sinyal = açılıştan bu yana oranı belirgin düşen tercih. Eşikler başlangıç tahminidir; gerçek başarı oranı Karne sekmesinde birikir. Bu araç kazanç garantisi vermez.</p>`;
+}
+
+function summarize(entries, keyFn){
+  const g = {};
+  entries.forEach(e=>{
+    const k = keyFn(e); g[k] ||= {n:0,win:0,refund:0,oddSum:0,profit:0};
+    const x = g[k];
+    if(e.result==="iade"){x.refund++;return;}
+    x.n++; x.oddSum+=e.odd;
+    if(e.result==="tuttu"){x.win++; x.profit+=e.odd-1;} else x.profit-=1;
+  });
+  return g;
+}
+
+function tableHtml(g, order, label){
+  const rows = order.filter(k=>g[k]).map(k=>{
+    const x=g[k]; const hr = x.n? x.win/x.n:0; const roi = x.n? x.profit/x.n:0;
+    return `<tr><td>${label(k)}</td><td>${x.n}</td><td>${x.n?pct(hr):"–"}</td><td>${x.n?(x.oddSum/x.n).toFixed(2):"–"}</td><td class="${roi>=0?"pos":"neg"}">${x.n?(roi>=0?"+":"")+(roi*100).toFixed(1)+"%":"–"}</td></tr>`;
+  }).join("");
+  return `<table><tr><th></th><th>Sinyal</th><th>Tuttu</th><th>Ort. oran</th><th>Getiri</th></tr>${rows}</table>`;
+}
+
+function renderKarne(){
+  const E = (KARNE && KARNE.entries) || [];
+  const el = document.getElementById("karne");
+  if(!E.length){
+    el.innerHTML = `<div class="empty">Karne henüz boş.<br><span class="note">Maçlar başlarken sinyaller kilitlenir, maç bitince sonuç buraya işlenir. İlk sonuçlar ilk hafta sonundan sonra gelir.</span></div>`;
+    return;
+  }
+  const byL = summarize(E, e=>e.level);
+  const allN = Object.values(byL).reduce((a,x)=>a+x.n,0);
+  const byM = summarize(E, e=>e.market.startsWith("AU")?"AU":e.market);
+  const ML = {MS:"Maç Sonucu",IY:"İlk Yarı",CS:"Çifte Şans",KG:"Karşılıklı Gol",AU:"Alt/Üst"};
+  const byNews = summarize(E, e=>e.news?"haberli":"habersiz");
+  const byLate = summarize(E, e=>e.late?"gec":"erken");
+  const recent = [...E].reverse().slice(0,60);
+  el.innerHTML =
+   `<div class="box"><h3>Güce göre</h3>${tableHtml(byL, LVL_ORDER, k=>`<span class="badge b-${k}">${LVL[k]}</span>`)}
+     ${allN<30?`<p class="warn">Örneklem küçük (${allN} sinyal). En az 30–50 sinyal birikmeden sonuçlara güvenme.</p>`:""}
+     <p class="note">Getiri: her sinyale 1 birim, maç başlamadan önceki son iddaa oranıyla oynanmış gibi hesaplanır.</p></div>
+   <div class="box"><h3>Pazara göre</h3>${tableHtml(byM, ["MS","IY","CS","KG","AU"], k=>ML[k])}</div>
+   <div class="box"><h3>Haber filtresi ve zamanlama</h3>${tableHtml({...byNews,...byLate}, ["habersiz","haberli","erken","gec"], k=>({habersiz:"Habersiz",haberli:"Haberli",erken:"Erken hareket",gec:"Geç hareket"}[k]))}</div>
+   <div class="box"><h3>Son sinyaller</h3>${recent.map(e=>`<div class="row"><div><span class="badge b-${e.level}">${LVL[e.level]}</span> <b>${esc(e.pick_label)}</b> @${e.odd.toFixed(2)}<div class="note">${esc(e.home)} – ${esc(e.away)} · ${esc(e.score)}${e.ht?` (İY ${esc(e.ht)})`:""} · ${new Date(e.kickoff).toLocaleDateString("tr-TR",{timeZone:TZ})}</div></div><div class="res-${e.result}">${e.result}</div></div>`).join("")}</div>`;
+}
+
+function tab(which){
+  document.getElementById("t-sig").classList.toggle("on",which==="sig");
+  document.getElementById("t-karne").classList.toggle("on",which==="karne");
+  document.getElementById("v-sig").hidden = which!=="sig";
+  document.getElementById("v-karne").hidden = which!=="karne";
+  if(which==="karne") renderKarne();
+}
+document.getElementById("t-sig").onclick=()=>tab("sig");
+document.getElementById("t-karne").onclick=()=>tab("karne");
+
+(async()=>{
+  const nc = "?t="+Date.now();
+  try{ SIG = await (await fetch("data/signals.json"+nc)).json(); renderSig(); }
+  catch(e){ document.getElementById("list").innerHTML = `<div class="empty">Veri henüz oluşmadı. İlk çalıştırmadan sonra burası dolacak.</div>`; }
+  try{ KARNE = await (await fetch("data/karne.json"+nc)).json(); }catch(e){ KARNE = {entries:[]}; }
+})();
+</script>
+</body>
+</html>
