@@ -17,4 +17,6 @@ Süper Lig maçlarında oranı belirgin düşen tercihleri bulur, güce göre (�
 ## Test
 `python3 tests/test_pipeline.py` (ağ gerektirmez)
 
+Site: https://oran-sinyal.vercel.app
+
 Bu araç bilgi amaçlıdır, kazanç garantisi vermez.
