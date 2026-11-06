@@ -21,6 +21,7 @@ nav{display:flex;gap:8px;padding:0 12px 12px}
 nav button{flex:1;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:12px;padding:11px;font-size:16px;font-weight:700}
 nav button.on{background:#fff;color:var(--brand)}
 main{max-width:740px;margin:0 auto;padding:14px 12px}
+.tip{background:#fff7ed;border:2px solid #fdba74;color:#9a3412;border-radius:14px;padding:11px 14px;font-size:15.5px;line-height:1.45;margin:0 0 14px}
 .label{font-size:13px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.5px;margin:4px 2px 6px}
 .filters{display:flex;gap:7px;margin:0 0 12px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .filters::-webkit-scrollbar{display:none}
@@ -84,6 +85,7 @@ td{font-weight:600}
 </header>
 <main>
   <section id="v-sig">
+    <div class="tip">⏱ <b>En güvenilir an: maça son 1 saat.</b> Sinyaller maç başlayana kadar yarım saatte bir güncellenir; son saatte en çok veriyi ve onayı toplamış olurlar.</div>
     <div class="label">Güç</div><div class="filters" id="f-lvl"></div>
     <div class="label">Lig</div><div class="filters" id="f-lg"></div>
     <div id="list"></div>
@@ -139,6 +141,12 @@ function renderSig(){
         const pin = s.pin ? `<span class="tag">Pinnacle ${s.pin.open.toFixed(2)} → ${s.pin.cur.toFixed(2)} (−${pct(s.pin.drop)})</span>` : "";
         const news = s.news && s.news.length ? `<span class="tag news">Haber var</span>` : "";
         const late = (s.late ? `<span class="tag late">Geç hareket</span>` : "") + (s.why_lower && s.why_lower.length ? `<span class="tag no">Düşük tutuldu: ${esc(s.why_lower.join(", "))}</span>` : "");
+        let hist = "";
+        if(s.history && s.history.length > 1){
+          const t = iso => new Date(iso).toLocaleTimeString("tr-TR",{timeZone:TZ,hour:"2-digit",minute:"2-digit"});
+          const up = LVL_ORDER.indexOf(s.history[s.history.length-1][1]) < LVL_ORDER.indexOf(s.history[s.history.length-2][1]);
+          hist = `<span class="tag ${up?"ok":"no"}">${up?"▲":"▼"} ${s.history.map(h=>LVL[h[1]]).join(" → ")} (${t(s.history[s.history.length-1][0])})</span>`;
+        }
         let conf = "";
         if(s.asia){
           const b = s.asia.books||{}, sg = b.singbet||b.sbobet, pn = b.pinnacle;
@@ -152,7 +160,7 @@ function renderSig(){
         return `<div class="sig"><span class="badge b-${s.level}">${LVL[s.level]}</span>
           <div class="pick">${esc(s.pick_label)}<span class="mk">${esc(s.market_label)}</span></div>
           <div class="odds">${s.iddaa.open.toFixed(2)} → <b>${s.iddaa.cur.toFixed(2)}</b><span class="drop">▼ ${pct(s.iddaa.drop)}</span></div>
-          <div class="meta">${spark(s.spark)}${pin}${conf}${late}${news}</div>${nd}</div>`;
+          <div class="meta">${spark(s.spark)}${hist}${pin}${conf}${late}${news}</div>${nd}</div>`;
       }).join("") + `</div>`;
   }).join("");
   document.getElementById("list").innerHTML = html || `<div class="empty">Bu filtrede sinyal yok.<br><span class="note">Takipte ${d.tracked_matches} maç var. Oranlar yarım saatte bir kontrol ediliyor.</span></div>`;

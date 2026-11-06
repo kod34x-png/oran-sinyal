@@ -199,6 +199,10 @@ def main():
             s_["pm"] = enrich.pm_info(m, key, ts)
             s_["asia"] = enrich.asia_info(m, key)
             signals.finalize(s_)
+            lh = m.setdefault("lvl_hist", {}).setdefault(key, [])
+            if not lh or lh[-1][1] != s_["level"]:
+                lh.append([ts, s_["level"]])
+            s_["history"] = [[iso(t), l] for t, l in lh[-4:]]
         sigs.sort(key=signals.sort_key)
         lk = m.get("league", "TR1")
         upcoming.append({"id": mid, "league": lk, "league_name": LEAGUE.get(lk, {}).get("name", lk),
