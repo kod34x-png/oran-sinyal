@@ -13,7 +13,7 @@ IDDAA_SUPER_LIG_CI = 584          # "Türkiye Süper Lig"
 # Pinnacle (PinnWire). Anahtar yoksa bu kaynak atlanır.
 PINNWIRE_KEY = os.environ.get("PINNWIRE_KEY", "").strip()
 PINNWIRE_BASE = "https://pinnwire.com"
-PINNACLE_LEAGUE_HINTS = ("turkey", "super lig")   # league_name içinde aranır
+PINNACLE_LEAGUE_HINTS = ("turkey", "super")   # Pinnacle adı: "Turkey - Super League"   # league_name içinde aranır
 
 # Skorlar (karne için)
 ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/scoreboard"
