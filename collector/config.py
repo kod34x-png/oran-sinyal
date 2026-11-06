@@ -46,18 +46,15 @@ NEWS_KEYWORDS = (
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")
 
-# Sinyal eşikleri (oran düşüşü, açılışa göre, oran olarak 0.15 = %15)
-MIN_ODD = 1.15                 # bunun altındaki oranlar sinyal sayılmaz
-THRESHOLDS_WITH_PIN = {        # Pinnacle verisi varken
-    "cok_guclu": {"pin": 0.15, "iddaa": 0.05},
-    "guclu":     {"pin": 0.10, "iddaa": 0.03},
-    "zayif":     {"pin": 0.05},
-}
-THRESHOLDS_IDDAA_ONLY = {      # sadece iddaa varken
-    "cok_guclu": 0.20,
-    "guclu": 0.12,
-    "zayif": 0.06,
-}
+# Sinyal kuralları (sıkı sürüm, 6 Kasım 2026). Düşüşler açılışa göre oran olarak (0.10 = %10).
+MIN_ODD = 1.25                 # bunun altındaki oranlar sinyal sayılmaz
+MIN_POINTS = 3                 # en az 3 farklı oran ölçümü
+MIN_SPAN_H = 6                 # ve en az 6 saatlik takip
+REBOUND_MAX = 0.30             # düşüşün %30'undan fazlası geri döndüyse sinyal yok
+PIN_BASE, ID_BASE = 0.08, 0.04 # temel şart: Pinnacle >= %8 VE iddaa >= %4 aynı yönde
+PIN_GUCLU, PIN_CG = 0.10, 0.12
+PIN_ALONE_GUCLU = 0.15         # onay yoksa "güçlü" için Pinnacle en az %15
+NOPIN_ZAYIF = 0.15             # Pinnacle'ın olmadığı pazarlar (İY, ÇŞ, KG): iddaa >= %15, en fazla "zayıf"
 LATE_MOVE_HOURS = 12           # düşüşün çoğu son 12 saatteyse "geç hareket"
 LEVELS = ["zayif", "guclu", "cok_guclu"]
 LEVEL_LABEL = {"cok_guclu": "Çok güçlü", "guclu": "Güçlü", "zayif": "Zayıf"}

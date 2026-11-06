@@ -137,8 +137,8 @@ function renderSig(){
     return `<div class="match"><div class="mh"><span class="lg">${esc(m.league_name||lgName(m.league))}</span>${m.pm_volume?`<span class="vol">Polymarket hacmi $${fmtK(m.pm_volume)}</span>`:""}<div class="mrow"><div class="teams">${esc(m.home)} – ${esc(m.away)}</div><div class="ko">${fmtKO(m.kickoff_iso)}</div></div></div>`+
       sigs.map(s=>{
         const pin = s.pin ? `<span class="tag">Pinnacle ${s.pin.open.toFixed(2)} → ${s.pin.cur.toFixed(2)} (−${pct(s.pin.drop)})</span>` : "";
-        const news = s.news && s.news.length ? `<span class="tag news">Haber var · 1 kademe düşürüldü</span>` : "";
-        const late = s.late ? `<span class="tag late">Geç hareket</span>` : "";
+        const news = s.news && s.news.length ? `<span class="tag news">Haber var</span>` : "";
+        const late = (s.late ? `<span class="tag late">Geç hareket</span>` : "") + (s.why_lower && s.why_lower.length ? `<span class="tag no">Düşük tutuldu: ${esc(s.why_lower.join(", "))}</span>` : "");
         let conf = "";
         if(s.asia){
           const b = s.asia.books||{}, sg = b.singbet||b.sbobet, pn = b.pinnacle;
@@ -163,7 +163,7 @@ function renderSig(){
   const st = d.status||{};
   const lab = {iddaa:"iddaa",pinnacle:"Pinnacle",polymarket:"Polymarket",asya:"Asya",asya_kota:"Asya aylık kota",news:"Haberler",results:"Skorlar"};
   document.getElementById("status").innerHTML = "Kaynaklar: " + Object.entries(st).map(([k,v])=>`${lab[k]||k} <span class="${v==="ok"||k==="asya_kota"?"ok":"bad"}">${v==="ok"?"✓":esc(v)}</span>`).join(" · ") +
-   `<p class="note">Sinyal = açılıştan bu yana oranı belirgin düşen tercih. Eşikler başlangıç tahminidir; gerçek başarı Karne sekmesinde birikir. Bu araç kazanç garantisi vermez.</p>`;
+   `<p class="note"><b>Kurallar:</b> Çok güçlü = Pinnacle en az %12 + iddaa en az %4 düşüş + Asya ya da Polymarket onayı + haber yok. Güçlü = Pinnacle en az %10 + (onay ya da Pinnacle en az %15). Diğerleri zayıf. Her sinyal için en az 3 ölçüm ve 6 saat takip gerekir; geri dönen düşüşler sayılmaz. Bu araç kazanç garantisi vermez.</p>`;
 }
 
 function summarize(entries, keyFn){

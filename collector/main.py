@@ -132,6 +132,7 @@ def main():
                     s_["pm"] = enrich.pm_info(m, key, lock_ts)
                     s_["asia"] = enrich.asia_info(m, key)
                     s_["clv"] = enrich.clv(m, s_)
+                    signals.finalize(s_)
                     s_.pop("spark", None)
                 pending.append({"id": mid, "league": m.get("league", "TR1"), "home": m["home"], "away": m["away"],
                                 "kickoff": m["kickoff"], "signals": sigs, "tries": 0})
@@ -157,7 +158,7 @@ def main():
                 continue
             if (m["kickoff"] - ts) / 3600 > C.ODDSPAPI_HIST_WINDOW_H:
                 continue
-            strong = [s_ for s_ in sigs if s_["market"] == "MS" and s_["level"] in ("guclu", "cok_guclu")]
+            strong = [s_ for s_ in sigs if s_["market"] == "MS" and s_["raw_level"] in ("guclu", "cok_guclu")]
             if strong:
                 cands.append((max(s_["iddaa"]["drop"] for s_ in strong), m))
         cands.sort(key=lambda x: -x[0])
@@ -197,7 +198,8 @@ def main():
             key = f"{s_['market']}|{s_['pick']}"
             s_["pm"] = enrich.pm_info(m, key, ts)
             s_["asia"] = enrich.asia_info(m, key)
-            s_.pop("raw_level", None)
+            signals.finalize(s_)
+        sigs.sort(key=signals.sort_key)
         lk = m.get("league", "TR1")
         upcoming.append({"id": mid, "league": lk, "league_name": LEAGUE.get(lk, {}).get("name", lk),
                          "home": m["home"], "away": m["away"],
@@ -237,7 +239,7 @@ def main():
                     "kickoff": iso(p["kickoff"]), "score": f"{r['ft'][0]}-{r['ft'][1]}",
                     "ht": f"{r['ht'][0]}-{r['ht'][1]}" if r["ht"] else None,
                     "market": s_["market"], "pick_label": s_["pick_label"],
-                    "level": s_["level"], "raw_level": s_.get("raw_level", s_["level"]),
+                    "level": s_["level"], "raw_level": s_.get("raw_level", s_["level"]), "confirmed": s_.get("confirmed"),
                     "odd": s_["iddaa"]["cur"], "pin_odd": (s_["pin"] or {}).get("cur"),
                     "news": bool(s_.get("news")), "late": s_.get("late", False),
                     "pm": (s_.get("pm") or {}).get("confirm"), "asia": (s_.get("asia") or {}).get("confirm"),

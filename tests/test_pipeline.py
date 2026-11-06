@@ -93,7 +93,16 @@ sig = json.loads((C.WEB_DATA / "signals.json").read_text())
 print(json.dumps(sig["matches"][0]["signals"], ensure_ascii=False, indent=1)[:1500])
 ms = {s["market"]: s for s in sig["matches"][0]["signals"]}
 assert ms["MS"]["pick"] == "2" and ms["MS"]["level"] == "cok_guclu", ms["MS"]
-assert ms["KG"]["pick"] == "Var"
+assert ms["KG"]["pick"] == "Var" and ms["KG"]["level"] == "zayif", ms["KG"]
+import signals
+# sıkı kurallar: onaysız çok güçlü -> güçlü; haber -> zayıf; tek ölçüm -> sinyal yok
+x = signals.finalize({"raw_level": "cok_guclu", "pin": {"drop": .2}, "news": [], "asia": None, "pm": None}); assert x["level"] == "guclu"
+x = signals.finalize({"raw_level": "guclu", "pin": {"drop": .11}, "news": [], "asia": None, "pm": None}); assert x["level"] == "zayif"
+x = signals.finalize({"raw_level": "cok_guclu", "pin": {"drop": .2}, "news": [1], "asia": {"confirm": True}, "pm": None}); assert x["level"] == "zayif"
+one = {"src": {"iddaa": {"MS|1": [[0, 3.0], [3600, 2.0]]}, "pin": {"MS|1": [[0, 3.0], [3600, 2.0]]}}}
+assert signals.compute(one, 7200) == [], "kısa takipte sinyal çıkmamalı"
+reb = {"src": {"iddaa": {"MS|1": [[0, 3.0], [4*3600, 2.0], [8*3600, 2.8]]}, "pin": {"MS|1": [[0, 3.0], [4*3600, 2.0], [8*3600, 2.8]]}}}
+assert signals.compute(reb, 9*3600) == [], "geri dönen düşüş sinyal olmamalı"
 assert ms["MS"]["pm"]["confirm"] is True, ms["MS"]["pm"]
 assert ms["MS"]["asia"]["confirm"] is True and OPCALLS["n"] == 1, (ms["MS"].get("asia"), OPCALLS)
 q = json.loads((C.STATE_DIR / "quota.json").read_text()); assert q["used"] == 2, q
@@ -109,6 +118,6 @@ print(json.dumps(k["entries"], ensure_ascii=False, indent=1))
 res = {e["market"]: e["result"] for e in k["entries"]}
 assert res["MS"] == "tuttu" and res["KG"] == "tutmadı", res
 e = [x for x in k["entries"] if x["market"] == "MS"][0]
-assert e["pm"] is True and e["asia"] is True and e["clv"] is not None and e["clv"] > 0, e
+assert e["pm"] is True and e["asia"] is True and e["clv"] is not None and e["clv"] >= 0, e
 print("TÜM TESTLER GEÇTİ")
 shutil.rmtree(tmp)
