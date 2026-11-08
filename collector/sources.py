@@ -139,8 +139,24 @@ def pinnacle_events():
 
 # ---------------- ESPN skorlar ----------------
 def espn_results(code, date_from, date_to):
-    """date_* = 'YYYYMMDD'. -> [{home, away, kickoff, ft:(h,a), ht:(h,a)|None, done}]"""
-    raw = http_json(C.ESPN_SCOREBOARD.format(code=code), {"dates": f"{date_from}-{date_to}", "limit": 300})
+    """date_* = 'YYYYMMDD'. ESPN artık tarih aralığını reddediyor (HTTP 400): gün gün sorgulanır.
+    -> [{home, away, kickoff, ft:(h,a), ht:(h,a)|None, done}]"""
+    from datetime import datetime as _dt, timedelta as _td
+    d, end = _dt.strptime(date_from, "%Y%m%d"), _dt.strptime(date_to, "%Y%m%d")
+    out, errors = [], []
+    while d <= end:
+        try:
+            raw = http_json(C.ESPN_SCOREBOARD.format(code=code), {"dates": d.strftime("%Y%m%d")})
+            out += _espn_parse(raw)
+        except Exception as e:
+            errors.append(f"{d:%m%d}: {str(e)[-60:]}")
+        d += _td(days=1)
+    if errors and not out:
+        raise RuntimeError("; ".join(errors)[:200])
+    return out
+
+
+def _espn_parse(raw):
     out = []
     for ev in raw.get("events", []):
         comp = (ev.get("competitions") or [{}])[0]
@@ -171,6 +187,41 @@ def espn_results(code, date_from, date_to):
             "done": bool(st.get("completed")),
             "status": st.get("name"),
         })
+    return out
+
+
+def tsdb_results(league_id):
+    """TheSportsDB (1. Lig için): son haftanın ve bir önceki haftanın sonuçları. İY skoru yok."""
+    past = http_json(f"{C.TSDB_BASE}/eventspastleague.php", {"id": league_id}).get("events") or []
+    rounds, season = set(), None
+    for e in past:
+        try:
+            r = int(e.get("intRound"))
+            rounds |= {r, r - 1}
+            season = e.get("strSeason") or season
+        except (TypeError, ValueError):
+            pass
+    events = list(past)
+    for r in sorted(rounds):
+        if r < 1 or not season:
+            continue
+        events += http_json(f"{C.TSDB_BASE}/eventsround.php", {"id": league_id, "r": r, "s": season}).get("events") or []
+    out, seen = [], set()
+    for e in events:
+        key = e.get("idEvent")
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            ts_ = e.get("strTimestamp") or f"{e['dateEvent']}T{e.get('strTime') or '00:00:00'}"
+            k = parse_iso(ts_[:19] + "Z")
+        except Exception:
+            continue
+        hs, as_ = e.get("intHomeScore"), e.get("intAwayScore")
+        done = (e.get("strStatus") or "").upper() in ("FT", "AET", "PEN", "MATCH FINISHED") and hs not in (None, "") and as_ not in (None, "")
+        out.append({"home": e.get("strHomeTeam"), "away": e.get("strAwayTeam"), "kickoff": k,
+                    "ft": (int(hs), int(as_)) if done else None, "ht": None, "done": done,
+                    "status": e.get("strStatus")})
     return out
 
 

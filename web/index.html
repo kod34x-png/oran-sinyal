@@ -179,7 +179,7 @@ function summarize(entries, keyFn){
   entries.forEach(e=>{
     const k = keyFn(e); g[k] ||= {n:0,win:0,refund:0,oddSum:0,profit:0};
     const x = g[k];
-    if(e.result==="iade"){x.refund++;return;}
+    if(e.result!=="tuttu" && e.result!=="tutmadı"){x.refund++;return;}
     x.n++; x.oddSum+=e.odd;
     if(e.result==="tuttu"){x.win++; x.profit+=e.odd-1;} else x.profit-=1;
   });

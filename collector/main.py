@@ -230,6 +230,11 @@ def main():
                 res += sources.football_data_results(LEAGUE[lk]["fd"], d0.strftime("%Y-%m-%d"), d1.strftime("%Y-%m-%d"))
             except Exception as e:
                 failed.append(f"{lk} FD: {str(e)[:60]}")
+        if LEAGUE[lk].get("tsdb"):
+            try:
+                res += sources.tsdb_results(LEAGUE[lk]["tsdb"])
+            except Exception as e:
+                failed.append(f"{lk} TSDB: {str(e)[:60]}")
         res = [r for r in res if r["done"] and r["ft"]]
         cands = [(r, r["home"], r["away"], r["kickoff"]) for r in res]
         for p in group:
@@ -238,6 +243,7 @@ def main():
                 continue
             for s_ in p["signals"]:
                 ok = settle(s_["market"], s_["pick"], r["ft"], r["ht"])
+                unknown = s_["market"] == "IY" and r["ht"] is None
                 karne["entries"].append({
                     "id": p["id"], "league": lk, "home": p["home"], "away": p["away"],
                     "kickoff": iso(p["kickoff"]), "score": f"{r['ft'][0]}-{r['ft'][1]}",
@@ -248,7 +254,7 @@ def main():
                     "news": bool(s_.get("news")), "late": s_.get("late", False),
                     "pm": (s_.get("pm") or {}).get("confirm"), "asia": (s_.get("asia") or {}).get("confirm"),
                     "clv": (s_.get("clv") or {}).get("clv"), "clv_src": (s_.get("clv") or {}).get("src"),
-                    "result": "iade" if ok is None else ("tuttu" if ok else "tutmadı"),
+                    "result": "bilinmiyor" if unknown else ("iade" if ok is None else ("tuttu" if ok else "tutmadı")),
                 })
             settled_ids.add(p["id"])
     if failed:

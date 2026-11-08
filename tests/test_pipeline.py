@@ -69,6 +69,7 @@ def fake_hist(fid):
     OPCALLS["n"] += 1
     return {"pinnacle": {"2": [[T0-86400*10, 6.0], [T0, 4.1]]}, "singbet": {"2": [[T0-86400*9, 5.8], [T0, 4.0]]}}
 sources.oddspapi_history = fake_hist
+sources.tsdb_results = lambda lid: []
 sources.espn_results = lambda code, a, b: [{"home": "Fenerbahçe", "away": "Başakşehir",
                                       "kickoff": KO, "ft": (0, 2), "ht": (0, 1), "done": True}]
 

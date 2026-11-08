@@ -11,7 +11,7 @@ IDDAA_BASE = "https://sportsbookv2.iddaa.com/sportsbook"
 # Ligler: iddaa adı (ci çalışırken bulunur, yedek ci), Pinnacle adı, ESPN kodu, haber dili
 LEAGUES = [
     {"key": "TR1", "name": "Süper Lig", "op": 52, "pm": "10292", "fd": None,      "iddaa": "Türkiye Süper Lig",     "ci": 584,  "pin": "Turkey - Super League",   "espn": "tur.1", "lang": "tr"},
-    {"key": "TR2", "name": "1. Lig", "op": 98, "pm": None, "fd": None,         "iddaa": "Türkiye 1. Lig",        "ci": 1980, "pin": "Turkey - 1st League",     "espn": "tur.2", "lang": "tr"},
+    {"key": "TR2", "name": "1. Lig", "op": 98, "pm": None, "fd": None, "tsdb": 4676,         "iddaa": "Türkiye 1. Lig",        "ci": 1980, "pin": "Turkey - 1st League",     "espn": "tur.2", "lang": "tr"},
     {"key": "ENG", "name": "Premier Lig", "op": 17, "pm": "10188", "fd": "PL",    "iddaa": "İngiltere Premier Lig", "ci": 43,   "pin": "England - Premier League", "espn": "eng.1", "lang": "en"},
     {"key": "ESP", "name": "La Liga", "op": 8, "pm": "10193", "fd": "PD",        "iddaa": "İspanya La Liga",       "ci": 129,  "pin": "Spain - La Liga",         "espn": "esp.1", "lang": "en"},
     {"key": "ITA", "name": "Serie A", "op": 23, "pm": "10203", "fd": "SA",        "iddaa": "İtalya Serie A",        "ci": None, "pin": "Italy - Serie A",         "espn": "ita.1", "lang": "en"},
@@ -76,3 +76,5 @@ PM_MIN_NEW_VOLUME = 5000          # ve en az 5.000 $ yeni hacim
 
 FOOTBALL_DATA_KEY = os.environ.get("FOOTBALL_DATA_KEY", "").strip()
 FOOTBALL_DATA_BASE = "https://api.football-data.org/v4"
+
+TSDB_BASE = "https://www.thesportsdb.com/api/v1/json/123"   # ücretsiz test anahtarı
