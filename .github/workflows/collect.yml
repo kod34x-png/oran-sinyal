@@ -1,12 +1,15 @@
 name: Oran topla
 
+# Kendi kendini sürdüren döngü: tek çalıştırma ~5,5 saat boyunca yarım saatte bir toplar,
+# bitmeden bir sonrakini başlatır. GitHub zamanlayıcısı sadece zincir koparsa diye yedek.
 on:
   schedule:
-    - cron: "7,37 * * * *"   # yarım saatte bir
+    - cron: "23 */2 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: collect
@@ -15,31 +18,42 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Topla ve sinyal üret
-        id: run
+      - name: Döngü (yarım saatte bir topla)
         env:
           PINNWIRE_KEY: ${{ secrets.PINNWIRE_KEY }}
           ODDSPAPI_KEY: ${{ secrets.ODDSPAPI_KEY }}
           FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
-        run: |
-          set +e
-          python collector/main.py
-          echo "code=$?" >> "$GITHUB_OUTPUT"
-      - name: Kaydet
+          LOOP_MINUTES: "330"
         run: |
           git config user.name "kod34x-png"
           git config user.email "kod34x@gmail.com"   # Vercel Hobby yalnız hesap sahibinin commitlerini yayınlar
-          git add state web/data
-          if git diff --cached --quiet; then echo "değişiklik yok"; exit 0; fi
-          git commit -q -m "veri: $(date -u +%Y-%m-%dT%H:%MZ)"
-          for i in 1 2 3; do git pull -q --rebase && git push -q && exit 0; sleep 5; done
-          exit 1
-      - name: Toplama hatası varsa işi kırmızı yap
-        if: steps.run.outputs.code != '0'
-        run: exit 1
+          end=$(( $(date +%s) + LOOP_MINUTES * 60 ))
+          fails=0
+          while true; do
+            start=$(date +%s)
+            git pull -q --rebase || true
+            echo "::group::Toplama $(date -u +%H:%MZ)"
+            python collector/main.py || fails=$((fails+1))
+            echo "::endgroup::"
+            git add state web/data
+            if ! git diff --cached --quiet; then
+              git commit -q -m "veri: $(date -u +%Y-%m-%dT%H:%MZ)"
+              for i in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done
+            fi
+            now=$(date +%s)
+            next=$(( start + 1800 ))
+            if [ $next -ge $end ]; then break; fi
+            [ $next -gt $now ] && sleep $(( next - now ))
+          done
+          echo "Toplama hataları: $fails"
+      - name: Zinciri sürdür (sonraki çalıştırmayı başlat)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST repos/${{ github.repository }}/actions/workflows/collect.yml/dispatches -f ref=main
