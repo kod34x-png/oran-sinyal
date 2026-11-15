@@ -259,11 +259,21 @@ def polymarket_matches(series_id):
     from datetime import datetime as _dt, timezone as _tz
     from util import team_sim
     now = now_ts()
-    raw = http_json(f"{C.POLYMARKET_BASE}/events",
-                    {"series_id": series_id, "closed": "false", "limit": 200,
-                     "end_date_min": _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+    # Yanıt yan piyasalarla birlikte çok büyüyor (4 MB+); küçük sayfalarla çek.
+    raw, offset, page = [], 0, 40
+    since = _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for _ in range(10):
+        chunk = http_json(f"{C.POLYMARKET_BASE}/events",
+                          {"series_id": series_id, "closed": "false", "limit": page,
+                           "offset": offset, "end_date_min": since})
+        if not isinstance(chunk, list) or not chunk:
+            break
+        raw += chunk
+        if len(chunk) < page:
+            break
+        offset += page
     out = []
-    for ev in raw if isinstance(raw, list) else []:
+    for ev in raw:
         title = ev.get("title") or ""
         if " - " in title or " vs. " not in title:
             continue                                  # yan piyasalar (korner, skor vb.)

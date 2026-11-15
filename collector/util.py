@@ -29,7 +29,7 @@ def parse_iso(s: str) -> int:
     return int(datetime.fromisoformat(s).timestamp())
 
 
-def http_get(url, params=None, headers=None, timeout=25, retries=2):
+def http_get(url, params=None, headers=None, timeout=40, retries=2):
     if params:
         url = url + ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
     h = {"User-Agent": UA, "Accept": "application/json, text/plain, */*",
@@ -43,9 +43,9 @@ def http_get(url, params=None, headers=None, timeout=25, retries=2):
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read().decode("utf-8", errors="replace")
         except Exception as e:  # noqa
-            last = e
+            last = f"{type(e).__name__}: {getattr(e, 'code', '')} {str(e)[:80]}"
             time.sleep(2 * (i + 1))
-    raise RuntimeError(f"GET başarısız: {url.split('?')[0]} -> {last}")
+    raise RuntimeError(f"GET başarısız: {url.split('?')[0].split('/')[2]} -> {last}")
 
 
 def http_json(url, params=None, headers=None):
