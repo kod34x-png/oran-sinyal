@@ -120,5 +120,8 @@ res = {e["market"]: e["result"] for e in k["entries"]}
 assert res["MS"] == "tuttu" and res["KG"] == "tutmadı", res
 e = [x for x in k["entries"] if x["market"] == "MS"][0]
 assert e["pm"] is True and e["asia"] is True and e["clv"] is not None and e["clv"] >= 0, e
+import signals as _sg
+reb = {"src": {"pin": {"AU3.5|Üst": [[0, 3.05], [3600, 2.61], [7200, 2.85]]}}}
+assert _sg.drop_reason(reb, "AU3.5|Üst", 7200).startswith("Oran geri döndü"), _sg.drop_reason(reb, "AU3.5|Üst", 7200)
 print("TÜM TESTLER GEÇTİ")
 shutil.rmtree(tmp)

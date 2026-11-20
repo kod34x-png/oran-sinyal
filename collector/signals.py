@@ -116,3 +116,21 @@ def finalize(sig):
 
 def sort_key(s):
     return (-C.LEVELS.index(s["level"]), -((s.get("pin") or {}).get("drop") or s["iddaa"]["drop"]))
+
+
+def drop_reason(match, key, now_ts, has_news=False):
+    """Bir sinyal neden kalktı? Kısa Türkçe açıklama."""
+    mkey = key.split("|")[0]
+    for src_name, label in (("pin", "Pinnacle"), ("iddaa", "iddaa")):
+        series = match.get("src", {}).get(src_name, {}).get(key)
+        if not series:
+            continue
+        st = _series_stats(series, now_ts, now_ts)
+        if st and st["rebound"] > C.REBOUND_MAX:
+            low = min(p[1] for p in series)
+            return f"Oran geri döndü ({label} {low:.2f} → {st['cur']:.2f})"
+        if src_name == "pin" and mkey in PIN_MARKETS and st and st["drop"] < C.PIN_BASE:
+            return f"Düşüş eşiğin altına indi ({label} −{st['drop']*100:.0f}%)"
+    if has_news:
+        return "Haber çıktı"
+    return "Kurallar artık sağlanmıyor"

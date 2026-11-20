@@ -204,6 +204,19 @@ def main():
                 lh.append([ts, s_["level"]])
             s_["history"] = [[iso(t), l] for t, l in lh[-4:]]
         sigs.sort(key=signals.sort_key)
+        # Kalkan sinyaller: bir saat boyunca "kalktı" notuyla gösterilir
+        cur_keys = {f"{x['market']}|{x['pick']}" for x in sigs}
+        dropped = m.setdefault("dropped", {})
+        for key, prev in (m.get("last_shown") or {}).items():
+            if key in cur_keys:
+                dropped.pop(key, None)
+                continue
+            if key not in dropped:
+                dropped[key] = {"ts": ts, "sig": prev, "reason": signals.drop_reason(m, key, ts, bool(m.get("news_at_lock")))}
+        for key in [k for k, d in dropped.items() if ts - d["ts"] > 3600 or k in cur_keys]:
+            dropped.pop(key, None)
+        m["last_shown"] = {f"{x['market']}|{x['pick']}": {k: x.get(k) for k in ("market", "market_label", "pick", "pick_label", "level", "iddaa", "pin")} for x in sigs}
+        removed = [{**d["sig"], "removed_at": iso(d["ts"]), "reason": d["reason"]} for d in dropped.values()]
         lk = m.get("league", "TR1")
         upcoming.append({"id": mid, "league": lk, "league_name": LEAGUE.get(lk, {}).get("name", lk),
                          "home": m["home"], "away": m["away"],
@@ -211,7 +224,7 @@ def main():
                          "tracking_since": iso(m["first_seen"]),
                          "pinnacle": bool(m.get("pin_id")),
                          "pm_volume": round(m.get("pm_total") or 0),
-                         "signals": sigs})
+                         "signals": sigs, "removed": removed})
 
     # 5) sonuçlar -> karne (lig lig)
     due = [p for p in pending if ts > p["kickoff"] + int(2.5 * 3600)]
@@ -274,13 +287,13 @@ def main():
 
     # 6) yaz
     upcoming.sort(key=lambda x: x["kickoff"])
-    with_sig = [u for u in upcoming if u["signals"]]
+    with_sig = [u for u in upcoming if u["signals"] or u.get("removed")]
     save_json(SIGNALS, {
         "updated": iso(ts), "status": status,
         "tracked_matches": len(upcoming), "matches": with_sig,
         "leagues": [{"key": lg["key"], "name": lg["name"]} for lg in C.LEAGUES],
         "quiet_matches": [{"league": u["league"], "home": u["home"], "away": u["away"], "kickoff_iso": u["kickoff_iso"]}
-                          for u in upcoming if not u["signals"]],
+                          for u in upcoming if not u["signals"] and not u.get("removed")],
     })
     karne["updated"] = iso(ts)
     save_json(KARNE, karne)
