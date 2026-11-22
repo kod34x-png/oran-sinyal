@@ -96,6 +96,10 @@ def main():
             m["pin_id"] = p["pin_id"]
             for k, odd in p["odds"].items():
                 append_point(m["src"]["pin"], k, ts, odd)
+            for k, v in (p.get("limits") or {}).items():
+                append_point(m["src"].setdefault("lim", {}), k, ts, v)
+            for k, v in (p.get("ah") or {}).items():
+                append_point(m["src"].setdefault("ah", {}), k, ts, v)
 
     # 3b) Polymarket hacmi
     pm_n, pm_err = 0, []

@@ -128,13 +128,52 @@ def pinnacle_events():
                 odds[f"AU{line:g}|Üst"] = round(float(tot["over"]), 3)
             if tot.get("under"):
                 odds[f"AU{line:g}|Alt"] = round(float(tot["under"]), 3)
+        # Sadece kayıt (kurala girmez): bahis limitleri ve Asya handikabı
+        limits, ah = {}, {}
+        if isinstance(ml, dict) and ml.get("max"):
+            limits["MS"] = _num(ml.get("max"))
+        for pts, tot in (p0.get("totals") or {}).items():
+            if isinstance(tot, dict) and tot.get("max"):
+                try:
+                    limits[f"AU{float(tot.get('points', pts)):g}"] = _num(tot["max"])
+                except (TypeError, ValueError):
+                    pass
+        for pts, sp in (p0.get("spreads") or {}).items():
+            if not isinstance(sp, dict):
+                continue
+            try:
+                hdp = float(sp.get("hdp", sp.get("points", pts)))
+            except (TypeError, ValueError):
+                continue
+            if abs(hdp) > 2.5:
+                continue
+            if sp.get("home"):
+                ah[f"AH{hdp:+g}|1"] = round(float(sp["home"]), 3)
+            if sp.get("away"):
+                ah[f"AH{hdp:+g}|2"] = round(float(sp["away"]), 3)
+            if sp.get("max"):
+                limits["AH"] = max(limits.get("AH", 0), _num(sp["max"]))
+        if not _SHAPE_LOGGED and p0:
+            _SHAPE_LOGGED.append(1)
+            print("[pinnacle] pazar yapısı:", {k: (list(v.items())[:1] if isinstance(v, dict) else v) for k, v in p0.items()})
         try:
             k = parse_iso(ev["starts"])
         except Exception:
             continue
         out.append({"league": lkey, "pin_id": ev.get("event_id"), "home": ev.get("home"),
-                    "away": ev.get("away"), "kickoff": k, "odds": odds})
+                    "away": ev.get("away"), "kickoff": k, "odds": odds,
+                    "limits": {k_: v for k_, v in limits.items() if v}, "ah": ah})
     return out
+
+
+_SHAPE_LOGGED = []
+
+
+def _num(x):
+    try:
+        return round(float(x), 2)
+    except (TypeError, ValueError):
+        return 0
 
 
 # ---------------- ESPN skorlar ----------------
