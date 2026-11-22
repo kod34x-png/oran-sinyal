@@ -11,7 +11,8 @@ from config import UA
 
 TR_MAP = str.maketrans("çğıöşüÇĞİÖŞÜâîû", "cgiosuCGIOSUaiu")
 STOP = {"fk", "sk", "as", "a", "s", "jk", "kulubu", "spor", "futbol", "fc",
-        "afc", "ac", "istanbul", "club", "kulub"}
+        "afc", "ac", "istanbul", "club", "kulub",
+        "sfk", "sportif", "faaliyetler", "faaliyetleri", "as", "aş", "sk", "cf", "sc"}
 
 
 def now_ts() -> int:
@@ -67,6 +68,9 @@ def team_sim(a: str, b: str) -> float:
         return 1.0
     ta, tb = set(a.split()), set(b.split())
     contain = 0.9 if (ta <= tb or tb <= ta) else 0.0
+    fa, fb = a.split()[0], b.split()[0]
+    if len(fa) >= 4 and fa == fb:          # aynı ayırt edici ilk kelime (Amed SFK / Amed Sportif Faaliyetler)
+        contain = max(contain, 0.85)
     return max(contain, SequenceMatcher(None, a, b).ratio())
 
 

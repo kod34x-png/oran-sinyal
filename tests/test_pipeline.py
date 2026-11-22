@@ -43,6 +43,9 @@ assert markets.settle("CS", "X2", (1, 1)) is True
 assert markets.settle("KG", "Var", (1, 0)) is False
 assert util.team_sim("Başakşehir FK", "Istanbul Basaksehir") >= 0.9
 assert util.team_sim("Fenerbahçe", "Fenerbahce") == 1.0
+assert util.team_sim("Amed Sportif Faaliyetler", "Amed SFK") >= 0.85
+assert util.team_sim("Rizespor", "Caykur Rizespor") >= 0.9
+assert util.team_sim("Galatasaray", "Gaziantep FK") < 0.7
 
 
 def fake_iddaa(odds):
